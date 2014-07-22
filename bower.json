@@ -1,0 +1,32 @@
+{
+  "name": "angular-point-sync",
+  "version": "0.0.1",
+  "homepage": "https://github.com/scatcher/angular-point-sync",
+  "authors": [
+    "Scott <github@scotthatcher.com>"
+  ],
+  "distPath": "dist",
+  "description": "Service that extends angular point to allow 3-way data binding using firebase (any change by any user to a list item is mirrored across users). The data isn't saved to firebase but the change event is so all subscribers are notified to request an update from SharePoint.",
+  "license": "MIT",
+  "main": "./dist/angular-point-sync.min.js",
+  "dependencies": {
+    "angular": "~1.2",
+    "angular-toastr": "latest",
+    "angularfire": "^0.6",
+    "jquery": "~1.11",
+    "lodash": "^2.4",
+    "SPServices": "https://github.com/scatcher/SPServices.git#master",
+    "angular-point": "https://github.com/scatcher/angular-point.git#master"
+  },
+  "devDependencies": {
+    "angular-sanitize": "~1.2",
+    "angular-mocks": "~1.2",
+    "angular-resource": "~1.2",
+    "angular-point-sync": "https://github.com/scatcher/angular-point-sync.git#master"
+  },
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components"
+  ]
+}
