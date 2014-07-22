@@ -14,3 +14,5 @@ This will create a change point at: apConfig.firebaseURL + '/changes/' + model.l
 Firebase.ServerValue.TIMESTAMP to determine the time of the most recent change.
 
 Initial documentation can be found [here](http://scatcher.github.io/angular-point-sync).
+
+This is still a work in progress and I need to add in some tests and a demo.
