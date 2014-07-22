@@ -11,7 +11,7 @@
   "main": "./dist/angular-point-sync.min.js",
   "dependencies": {
     "angular": "~1.2",
-    "angularfire": "^0.6",
+    "angularfire": "^0.7.1",
     "lodash": "^2.4",
     "SPServices": "https://github.com/scatcher/SPServices.git#master",
     "angular-point": "https://github.com/scatcher/angular-point.git#master"
