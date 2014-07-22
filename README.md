@@ -1,6 +1,8 @@
 angular-point-sync
 ==================
 
+This is an optional [angular-point](https://github.com/scatcher/angular-point) service.
+
 Supports 3-way data binding if you decide to incorporate firebase (any change by any user to a list item is 
 mirrored across users). The data isn't saved to firebase but the change event is so all subscribers are notified 
 to request an update from SharePoint.
