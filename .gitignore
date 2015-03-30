@@ -1,5 +1,11 @@
-node_modules/
-demo/bower_components/
-*.log
-.idea
+# Dependencies
+node_modules
+bower_components
+
+# Build
 .tmp
+
+# IDE
+.idea
+
+npm-debug.log
