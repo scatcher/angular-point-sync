@@ -42,6 +42,7 @@ var angularPoint;
     var $q, $firebaseArray, apListItemFactory, deferred, serviceIsInitialized;
     var apSyncService = (function () {
         function apSyncService(_$firebaseArray_, _$q_, _apListItemFactory_) {
+            this.Lock = Lock;
             /** Expose to service scope */
             $q = _$q_;
             $firebaseArray = _$firebaseArray_;
@@ -50,15 +51,6 @@ var angularPoint;
             deferred = $q.defer();
             serviceIsInitialized = deferred.promise;
         }
-        /**
-         *
-         * @param {Model} model
-         * @param Function updateQuery Callback used when change event occurs.
-         * @returns {angularPoint.SyncPoint}
-         */
-        apSyncService.prototype.synchronizeData = function (model, updateQuery) {
-            return new SyncPoint(model, updateQuery);
-        };
         /**
          * @description Service waits for userId to be provided before adding the watch to event array.
          * @param {{userId: userId, fireBaseUrl: fireBaseUrl}} userId
@@ -72,6 +64,15 @@ var angularPoint;
             var self = this;
             deferred.resolve({ userId: userId, fireBaseUrl: fireBaseUrl });
             apListItemFactory.ListItem.prototype.lock = Lock;
+        };
+        /**
+         *
+         * @param {Model} model
+         * @param Function updateQuery Callback used when change event occurs.
+         * @returns {angularPoint.SyncPoint}
+         */
+        apSyncService.prototype.synchronizeData = function (model, updateQuery) {
+            return new SyncPoint(model, updateQuery);
         };
         /** Minification safe - we're using leading and trailing underscores but gulp plugin doesn't treat them correctly */
         apSyncService.$inject = ['$firebaseArray', '$q', 'apListItemFactory'];

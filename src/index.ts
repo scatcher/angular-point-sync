@@ -75,16 +75,6 @@ module angularPoint {
       }
 
         /**
-         *
-         * @param {Model} model
-         * @param Function updateQuery Callback used when change event occurs.
-         * @returns {angularPoint.SyncPoint}
-         */
-        synchronizeData(model:Model, updateQuery:Function) {
-            return new SyncPoint(model, updateQuery);
-        }
-
-        /**
          * @description Service waits for userId to be provided before adding the watch to event array.
          * @param {{userId: userId, fireBaseUrl: fireBaseUrl}} userId
          */
@@ -99,6 +89,19 @@ module angularPoint {
 
             apListItemFactory.ListItem.prototype.lock = Lock;
         }
+
+        Lock = Lock;
+
+        /**
+         *
+         * @param {Model} model
+         * @param Function updateQuery Callback used when change event occurs.
+         * @returns {angularPoint.SyncPoint}
+         */
+        synchronizeData(model:Model, updateQuery:Function) {
+            return new SyncPoint(model, updateQuery);
+        }
+
 
     }
 
