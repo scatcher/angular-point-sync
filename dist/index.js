@@ -1,3 +1,4 @@
+//Remove Initial slash to get typings
 /// <reference path="../typings/tsd.d.ts" />
 /**
  * @ngdoc service

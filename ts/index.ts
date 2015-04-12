@@ -1,4 +1,5 @@
-/// <reference path="../typings/tsd.d.ts" />
+//Remove Initial slash to get typings
+//// <reference path="../typings/tsd.d.ts" />
 
 /**
  * @ngdoc service
@@ -53,7 +54,7 @@ module ap.sync {
 
     export interface ISyncService {
         initialize(userId:number, fireBaseUrl:string);
-        synchronizeData(model:Object, updateQuery:Function):ISyncPoint;
+        synchronizeData(model:ap.IModel, updateQuery:Function):ISyncPoint;
     }
 
     export interface ISyncPoint {
@@ -110,7 +111,7 @@ module ap.sync {
          * @param Function updateQuery Callback used when change event occurs.
          * @returns {angularPoint.SyncPoint}
          */
-        synchronizeData(model:Object, updateQuery:Function):ISyncPoint {
+        synchronizeData(model:ap.IModel, updateQuery:Function):ISyncPoint {
             return new SyncPoint(model, updateQuery);
         }
 
