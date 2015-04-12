@@ -6,5 +6,4 @@
 /// <reference path="firebase/firebase.d.ts" />
 /// <reference path="jquery/jquery.d.ts" />
 /// <reference path="lodash/lodash.d.ts" />
-/// <reference path="../node_modules/angular-point-tools/interfaces/angular-point.d.ts" />
 

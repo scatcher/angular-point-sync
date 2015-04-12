@@ -36,7 +36,6 @@
  * @requires angularPoint.apConfig
  */
 
-
 module ap.sync {
     'use strict';
 
@@ -54,7 +53,7 @@ module ap.sync {
 
     export interface ISyncService {
         initialize(userId:number, fireBaseUrl:string);
-        synchronizeData(model:ap.IModel, updateQuery:Function):ISyncPoint;
+        synchronizeData(model:Object, updateQuery:Function):ISyncPoint;
     }
 
     export interface ISyncPoint {
@@ -111,7 +110,7 @@ module ap.sync {
          * @param Function updateQuery Callback used when change event occurs.
          * @returns {angularPoint.SyncPoint}
          */
-        synchronizeData(model:ap.IModel, updateQuery:Function):ISyncPoint {
+        synchronizeData(model:Object, updateQuery:Function):ISyncPoint {
             return new SyncPoint(model, updateQuery);
         }
 
