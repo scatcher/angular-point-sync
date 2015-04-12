@@ -13,7 +13,7 @@ var tsdApi = new tsd.getAPI(tsdJson);
 
 
 var options = {
-    src: 'src',
+    src: 'ts',
     dist: 'dist',
     tmp: '.tmp',
     e2e: 'e2e',
@@ -78,7 +78,7 @@ gulp.task('tsd', ['tsd:install']);
 gulp.task('build', function() {
     return gulp.src(options.src + '/**/*.ts')
         .pipe(ts({
-            //declarationFiles: true
+            declarationFiles: true
             //noExternalResolve: true
         }))
         .pipe(ngAnnotate({add: true, single_quotes: true}))
