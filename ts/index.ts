@@ -3,7 +3,7 @@
 
 /**
  * @ngdoc service
- * @name angularPoint.syncService
+ * @name ap.sync
  * @description
  * Supports 3-way data binding if you decide to incorporate firebase (any change by any user
  * to a list item is mirrored across users). The data isn't saved to firebase but the change
@@ -34,7 +34,6 @@
  *  });
  * </pre>
  *
- * @requires angularPoint.apConfig
  */
 
 module ap.sync {
@@ -67,6 +66,7 @@ module ap.sync {
         userId:number;
         time: string
     }
+
 
     var $q,
         $firebaseArray,
@@ -107,9 +107,9 @@ module ap.sync {
 
         /**
          *
-         * @param {Model} model
-         * @param Function updateQuery Callback used when change event occurs.
-         * @returns {angularPoint.SyncPoint}
+         * @param model
+         * @param updateQuery
+         * @returns {ap.sync.SyncPoint}
          */
         synchronizeData(model:ap.IModel, updateQuery:Function):ISyncPoint {
             return new SyncPoint(model, updateQuery);
@@ -119,34 +119,39 @@ module ap.sync {
     }
 
 
-    class SyncPoint {
+    export class SyncPoint {
         eventLogLength = 10;
         changeNotifier;
         recentEvents;
         /** Container to hold all current subscriptions for the model */
         subscriptions = [];
 
-        constructor(private model, private updateQuery) {
-            var sync = this;
+        /**
+         *
+         * @param model
+         * @param updateQuery
+         */
+        constructor(private model:ap.IModel, private updateQuery:Function) {
+            var syncPoint = this;
 
             serviceIsInitialized
                 .then((initializationParams:ISyncServiceInitializationParams) => {
 
-                    sync.changeNotifier = new Firebase(initializationParams.fireBaseUrl + '/changes/' + model.list.title);
+                    syncPoint.changeNotifier = new Firebase(initializationParams.fireBaseUrl + '/changes/' + model.list.title);
 
-                    var query = sync.changeNotifier.limitToLast(sync.eventLogLength);
+                    var query = syncPoint.changeNotifier.limitToLast(syncPoint.eventLogLength);
 
-                    sync.recentEvents = $firebaseArray(query);
+                    syncPoint.recentEvents = $firebaseArray(query);
 
-                    sync.recentEvents.$loaded()
+                    syncPoint.recentEvents.$loaded()
                         .then((eventArray) => {
 
                             /** Fired when anyone updates a list item */
-                            sync.recentEvents.$watch((log) => {
+                            syncPoint.recentEvents.$watch((log) => {
                                 if (log.event === 'child_added') {
-                                    var newEvent:ISyncServiceChangeEvent = sync.recentEvents.$getRecord(log.key);
+                                    var newEvent:ISyncServiceChangeEvent = syncPoint.recentEvents.$getRecord(log.key);
                                     if (newEvent.userId !== initializationParams.userId) {
-                                        sync.processChanges(newEvent);
+                                        syncPoint.processChanges(newEvent);
                                     }
                                 }
                             });
@@ -159,9 +164,9 @@ module ap.sync {
         }
 
         processChanges(newEvent:ISyncServiceChangeEvent) {
-            var sync = this;
+            var syncPoint = this;
             /** Notify subscribers */
-            _.each(sync.subscriptions, (callback) => {
+            _.each(syncPoint.subscriptions, (callback) => {
                 if (_.isFunction(callback)) {
                     callback(newEvent);
                 }
@@ -176,15 +181,15 @@ module ap.sync {
          * Notify all other users listening to this model that a change has been made.
          */
         registerChange(changeType:string, listItemId:number) {
-            var sync = this;
+            var syncPoint = this;
             serviceIsInitialized
                 .then((initializationParams) => {
-                    if (sync.recentEvents.length >= sync.eventLogLength) {
+                    if (syncPoint.recentEvents.length >= syncPoint.eventLogLength) {
                         /** Trim the log to prevent unnecessary size */
-                        sync.recentEvents.$remove(0);
+                        syncPoint.recentEvents.$remove(0);
                     }
 
-                    sync.recentEvents.$add({
+                    syncPoint.recentEvents.$add({
                         changeType: changeType,
                         listItemId: listItemId,
                         userId: initializationParams.userId,
@@ -204,18 +209,18 @@ module ap.sync {
          * @param {function} callback Callback to execute after a change is made.
          */
         subscribeToChanges(callback:Function) {
-            var sync = this;
-            if (sync.subscriptions.indexOf(callback) === -1) {
+            var syncPoint = this;
+            if (syncPoint.subscriptions.indexOf(callback) === -1) {
                 /** Only register new subscriptions, ignore if subscription already exists */
-                sync.subscriptions.push(callback);
+                syncPoint.subscriptions.push(callback);
             }
         }
     }
 
-    export function Lock() {
+    export function Lock():ng.IPromise<{reference:IListItemLock[]; unlock(lockReference:IListItemLock)}> {
         var deferred = $q.defer();
 
-        var listItem = this;
+        var listItem = <ap.IListItem>this;
 
         /** Only can lock existing records */
         if (listItem.id) {

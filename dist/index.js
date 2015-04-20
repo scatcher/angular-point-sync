@@ -2,7 +2,7 @@
 /// <reference path="../typings/tsd.d.ts" />
 /**
  * @ngdoc service
- * @name angularPoint.syncService
+ * @name ap.sync
  * @description
  * Supports 3-way data binding if you decide to incorporate firebase (any change by any user
  * to a list item is mirrored across users). The data isn't saved to firebase but the change
@@ -33,12 +33,11 @@
  *  });
  * </pre>
  *
- * @requires angularPoint.apConfig
  */
 var ap;
 (function (ap) {
     var sync;
-    (function (_sync) {
+    (function (sync) {
         'use strict';
         var $q, $firebaseArray, apListItemFactory, deferred, serviceIsInitialized;
         var SyncService = (function () {
@@ -67,9 +66,9 @@ var ap;
             };
             /**
              *
-             * @param {Model} model
-             * @param Function updateQuery Callback used when change event occurs.
-             * @returns {angularPoint.SyncPoint}
+             * @param model
+             * @param updateQuery
+             * @returns {ap.sync.SyncPoint}
              */
             SyncService.prototype.synchronizeData = function (model, updateQuery) {
                 return new SyncPoint(model, updateQuery);
@@ -78,26 +77,31 @@ var ap;
             SyncService.$inject = ['$firebaseArray', '$q', 'apListItemFactory'];
             return SyncService;
         })();
-        _sync.SyncService = SyncService;
+        sync.SyncService = SyncService;
         var SyncPoint = (function () {
+            /**
+             *
+             * @param model
+             * @param updateQuery
+             */
             function SyncPoint(model, updateQuery) {
                 this.model = model;
                 this.updateQuery = updateQuery;
                 this.eventLogLength = 10;
                 /** Container to hold all current subscriptions for the model */
                 this.subscriptions = [];
-                var sync = this;
+                var syncPoint = this;
                 serviceIsInitialized.then(function (initializationParams) {
-                    sync.changeNotifier = new Firebase(initializationParams.fireBaseUrl + '/changes/' + model.list.title);
-                    var query = sync.changeNotifier.limitToLast(sync.eventLogLength);
-                    sync.recentEvents = $firebaseArray(query);
-                    sync.recentEvents.$loaded().then(function (eventArray) {
+                    syncPoint.changeNotifier = new Firebase(initializationParams.fireBaseUrl + '/changes/' + model.list.title);
+                    var query = syncPoint.changeNotifier.limitToLast(syncPoint.eventLogLength);
+                    syncPoint.recentEvents = $firebaseArray(query);
+                    syncPoint.recentEvents.$loaded().then(function (eventArray) {
                         /** Fired when anyone updates a list item */
-                        sync.recentEvents.$watch(function (log) {
+                        syncPoint.recentEvents.$watch(function (log) {
                             if (log.event === 'child_added') {
-                                var newEvent = sync.recentEvents.$getRecord(log.key);
+                                var newEvent = syncPoint.recentEvents.$getRecord(log.key);
                                 if (newEvent.userId !== initializationParams.userId) {
-                                    sync.processChanges(newEvent);
+                                    syncPoint.processChanges(newEvent);
                                 }
                             }
                         });
@@ -105,9 +109,9 @@ var ap;
                 });
             }
             SyncPoint.prototype.processChanges = function (newEvent) {
-                var sync = this;
+                var syncPoint = this;
                 /** Notify subscribers */
-                _.each(sync.subscriptions, function (callback) {
+                _.each(syncPoint.subscriptions, function (callback) {
                     if (_.isFunction(callback)) {
                         callback(newEvent);
                     }
@@ -121,13 +125,13 @@ var ap;
              * Notify all other users listening to this model that a change has been made.
              */
             SyncPoint.prototype.registerChange = function (changeType, listItemId) {
-                var sync = this;
+                var syncPoint = this;
                 serviceIsInitialized.then(function (initializationParams) {
-                    if (sync.recentEvents.length >= sync.eventLogLength) {
+                    if (syncPoint.recentEvents.length >= syncPoint.eventLogLength) {
                         /** Trim the log to prevent unnecessary size */
-                        sync.recentEvents.$remove(0);
+                        syncPoint.recentEvents.$remove(0);
                     }
-                    sync.recentEvents.$add({
+                    syncPoint.recentEvents.$add({
                         changeType: changeType,
                         listItemId: listItemId,
                         userId: initializationParams.userId,
@@ -145,14 +149,15 @@ var ap;
              * @param {function} callback Callback to execute after a change is made.
              */
             SyncPoint.prototype.subscribeToChanges = function (callback) {
-                var sync = this;
-                if (sync.subscriptions.indexOf(callback) === -1) {
+                var syncPoint = this;
+                if (syncPoint.subscriptions.indexOf(callback) === -1) {
                     /** Only register new subscriptions, ignore if subscription already exists */
-                    sync.subscriptions.push(callback);
+                    syncPoint.subscriptions.push(callback);
                 }
             };
             return SyncPoint;
         })();
+        sync.SyncPoint = SyncPoint;
         function Lock() {
             var deferred = $q.defer();
             var listItem = this;
@@ -191,7 +196,7 @@ var ap;
             }
             return deferred.promise;
         }
-        _sync.Lock = Lock;
+        sync.Lock = Lock;
         angular.module('angularPoint').service('apSyncService', SyncService);
     })(sync = ap.sync || (ap.sync = {}));
 })(ap || (ap = {}));
