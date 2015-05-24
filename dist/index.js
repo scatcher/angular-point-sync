@@ -1,5 +1,3 @@
-//Remove Initial slash to get typings
-/// <reference path="../typings/tsd.d.ts" />
 /**
  * @ngdoc service
  * @name ap.sync
@@ -27,7 +25,9 @@
  * <h3>Example of how to register from the model</h3>
  * <pre>
  * //Add a subscription service that will automatically keep data in sync with all other active users
- * model.sync = apSyncService.synchronizeData(model, function () {
+ * model.sync = apSyncService.synchronizeData(model);
+ *
+ * model.sync.subscribeToChanges(function () {
  *    //Do something because a change has occurred
  *
  *  });
@@ -39,18 +39,22 @@ var ap;
     var sync;
     (function (sync) {
         'use strict';
-        var $q, $firebaseArray, apListItemFactory, deferred, serviceIsInitialized;
+        var $q, $firebaseArray, $rootScope, apListItemFactory, deferred, serviceIsInitialized;
         var SyncService = (function () {
-            function SyncService(_$firebaseArray_, _$q_, _apListItemFactory_) {
+            function SyncService(_$firebaseArray_, _$q_, _apListItemFactory_, _$rootScope_) {
                 this.Lock = Lock;
                 /** Expose to service scope */
                 $q = _$q_;
                 $firebaseArray = _$firebaseArray_;
                 apListItemFactory = _apListItemFactory_;
+                $rootScope = _$rootScope_;
                 /** Create a deferred object that will allow service to proceed once a userId is provided */
                 deferred = $q.defer();
                 serviceIsInitialized = deferred.promise;
             }
+            SyncService.prototype.createSyncPoint = function (model) {
+                return new SyncPoint(model);
+            };
             /**
              * @description Service waits for userId to be provided before adding the watch to event array.
              * @param {{userId: userId, fireBaseUrl: fireBaseUrl}} userId
@@ -64,17 +68,8 @@ var ap;
                 deferred.resolve({ userId: userId, fireBaseUrl: fireBaseUrl });
                 apListItemFactory.ListItem.prototype.lock = Lock;
             };
-            /**
-             *
-             * @param model
-             * @param updateQuery
-             * @returns {ap.sync.SyncPoint}
-             */
-            SyncService.prototype.synchronizeData = function (model, updateQuery) {
-                return new SyncPoint(model, updateQuery);
-            };
             /** Minification safe - we're using leading and trailing underscores but gulp plugin doesn't treat them correctly */
-            SyncService.$inject = ['$firebaseArray', '$q', 'apListItemFactory'];
+            SyncService.$inject = ['$firebaseArray', '$q', 'apListItemFactory', '$rootScope'];
             return SyncService;
         })();
         sync.SyncService = SyncService;
@@ -84,9 +79,8 @@ var ap;
              * @param model
              * @param updateQuery
              */
-            function SyncPoint(model, updateQuery) {
+            function SyncPoint(model) {
                 this.model = model;
-                this.updateQuery = updateQuery;
                 this.eventLogLength = 10;
                 /** Container to hold all current subscriptions for the model */
                 this.subscriptions = [];
@@ -100,20 +94,25 @@ var ap;
                         syncPoint.recentEvents.$watch(function (log) {
                             if (log.event === 'child_added') {
                                 var newEvent = syncPoint.recentEvents.$getRecord(log.key);
-                                if (newEvent.userId !== initializationParams.userId) {
-                                    syncPoint.processChanges(newEvent);
-                                }
+                                /** Capture if event was caused by current user */
+                                var externalTrigger = newEvent.userId !== initializationParams.userId;
+                                syncPoint.processChanges(newEvent, externalTrigger);
                             }
                         });
                     });
                 });
             }
-            SyncPoint.prototype.processChanges = function (newEvent) {
+            /**
+             *
+             * @param {ISyncServiceChangeEvent} newEvent Details of event.
+             * @param {boolean} externalTrigger Was the changed caused by another user.
+             */
+            SyncPoint.prototype.processChanges = function (newEvent, externalTrigger) {
                 var syncPoint = this;
                 /** Notify subscribers */
                 _.each(syncPoint.subscriptions, function (callback) {
                     if (_.isFunction(callback)) {
-                        callback(newEvent);
+                        callback(newEvent, externalTrigger);
                     }
                 });
             };
@@ -144,15 +143,34 @@ var ap;
              * @name SyncPoint.subscribeToChanges
              * @methodOf SyncPoint
              * @description
-             * Allows subscribers (controllers) to be notified when change is made
+             * Allows subscribers (controllers & services) to be notified when change is made.
              *
              * @param {function} callback Callback to execute after a change is made.
+             * @param {boolean} [unsubscribeOnStateChange = true]
+             * @returns {function} Function used to unsubscribe.
              */
-            SyncPoint.prototype.subscribeToChanges = function (callback) {
+            SyncPoint.prototype.subscribeToChanges = function (callback, unsubscribeOnStateChange) {
+                var _this = this;
+                if (unsubscribeOnStateChange === void 0) { unsubscribeOnStateChange = true; }
                 var syncPoint = this;
                 if (syncPoint.subscriptions.indexOf(callback) === -1) {
                     /** Only register new subscriptions, ignore if subscription already exists */
                     syncPoint.subscriptions.push(callback);
+                }
+                var unsubscribe = function () { return _this.unsubscribe(callback); };
+                if (unsubscribeOnStateChange) {
+                    //var $rootScope = $injector.get('$rootScope');
+                    /** Unsubscribe from notifications when we leave this state */
+                    $rootScope.$on('$stateChangeStart', function () {
+                        unsubscribe();
+                    });
+                }
+                return unsubscribe;
+            };
+            SyncPoint.prototype.unsubscribe = function (callback) {
+                var index = this.subscriptions.indexOf(callback);
+                if (index !== -1) {
+                    this.subscriptions.splice(index, 1);
                 }
             };
             return SyncPoint;

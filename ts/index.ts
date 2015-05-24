@@ -1,6 +1,3 @@
-//Remove Initial slash to get typings
-//// <reference path="../typings/tsd.d.ts" />
-
 /**
  * @ngdoc service
  * @name ap.sync
@@ -28,10 +25,12 @@
  * <h3>Example of how to register from the model</h3>
  * <pre>
  * //Add a subscription service that will automatically keep data in sync with all other active users
- * model.sync = apSyncService.synchronizeData(model, function () {
+ * model.sync = apSyncService.createSyncPoint(model);
+ *
+ * model.sync.subscribeToChanges(function () {
  *    //Do something because a change has occurred
  *
- *  });
+ *  }, true); //Unsubscribe on route change so we don't keep reference in future
  * </pre>
  *
  */
@@ -39,27 +38,30 @@
 module ap.sync {
     'use strict';
 
+    var $q,
+        $firebaseArray,
+        $rootScope,
+        apListItemFactory,
+        deferred: ng.IDeferred<ISyncServiceInitializationParams>,
+        serviceIsInitialized: ng.IPromise<ISyncServiceInitializationParams>;
+
+
     export interface ISyncServiceInitializationParams {
-        userId:number;
-        fireBaseUrl:string;
+        userId: number;
+        fireBaseUrl: string;
     }
 
     export interface ISyncServiceChangeEvent {
-        changeType:string; // 'add'|'update'|'delete';
+        changeType: string; // 'add'|'update'|'delete';
         listItemId: number;
         userId: number;
         time: number;
     }
 
     export interface ISyncService {
-        initialize(userId:number, fireBaseUrl:string);
-        synchronizeData(model:ap.IModel, updateQuery:Function):ISyncPoint;
-    }
-
-    export interface ISyncPoint {
-        eventLogLength:number;
-        recentEvents:ISyncServiceChangeEvent[];
-        subscribeToChanges(callback:Function);
+        createSyncPoint(model: ap.IModel):ISyncPoint;
+        initialize(userId: number, fireBaseUrl: string);
+        Lock():ng.IPromise<{reference:IListItemLock[]; unlock(lockReference: IListItemLock)}>;
     }
 
     export interface IListItemLock {
@@ -68,25 +70,24 @@ module ap.sync {
     }
 
 
-    var $q,
-        $firebaseArray,
-        apListItemFactory,
-        deferred:ng.IDeferred<ISyncServiceInitializationParams>,
-        serviceIsInitialized:ng.IPromise<ISyncServiceInitializationParams>;
-
-    export class SyncService {
+    export class SyncService implements ISyncService {
         /** Minification safe - we're using leading and trailing underscores but gulp plugin doesn't treat them correctly */
-        static $inject = ['$firebaseArray', '$q', 'apListItemFactory'];
+        static $inject = ['$firebaseArray', '$q', 'apListItemFactory', '$rootScope'];
 
-        constructor(_$firebaseArray_, _$q_, _apListItemFactory_) {
+        constructor(_$firebaseArray_, _$q_, _apListItemFactory_, _$rootScope_) {
             /** Expose to service scope */
             $q = _$q_;
             $firebaseArray = _$firebaseArray_;
             apListItemFactory = _apListItemFactory_;
+            $rootScope = _$rootScope_;
 
             /** Create a deferred object that will allow service to proceed once a userId is provided */
             deferred = $q.defer();
             serviceIsInitialized = deferred.promise;
+        }
+
+        createSyncPoint(model: ap.IModel): ISyncPoint {
+            return new SyncPoint(model);
         }
 
         /**
@@ -98,28 +99,24 @@ module ap.sync {
          * @param {number} userId
          * @param {string} fireBaseUrl
          */
-        initialize(userId:number, fireBaseUrl:string) {
+        initialize(userId: number, fireBaseUrl: string) {
             deferred.resolve({userId: userId, fireBaseUrl: fireBaseUrl});
             apListItemFactory.ListItem.prototype.lock = Lock;
         }
 
         Lock = Lock;
+    }
 
-        /**
-         *
-         * @param model
-         * @param updateQuery
-         * @returns {ap.sync.SyncPoint}
-         */
-        synchronizeData(model:ap.IModel, updateQuery:Function):ISyncPoint {
-            return new SyncPoint(model, updateQuery);
-        }
-
-
+    export interface ISyncPoint {
+        eventLogLength:number;
+        recentEvents:ISyncServiceChangeEvent[];
+        registerChange(changeType: string, listItemId: number);
+        subscribeToChanges(callback: Function, unsubscribeOnStateChange = true): Function;
+        unsubscribe(callback);
     }
 
 
-    export class SyncPoint {
+    export class SyncPoint implements ISyncPoint {
         eventLogLength = 10;
         changeNotifier;
         recentEvents;
@@ -131,11 +128,11 @@ module ap.sync {
          * @param model
          * @param updateQuery
          */
-        constructor(private model:ap.IModel, private updateQuery:Function) {
+        constructor(private model: ap.IModel) {
             var syncPoint = this;
 
             serviceIsInitialized
-                .then((initializationParams:ISyncServiceInitializationParams) => {
+                .then((initializationParams: ISyncServiceInitializationParams) => {
 
                     syncPoint.changeNotifier = new Firebase(initializationParams.fireBaseUrl + '/changes/' + model.list.title);
 
@@ -149,10 +146,10 @@ module ap.sync {
                             /** Fired when anyone updates a list item */
                             syncPoint.recentEvents.$watch((log) => {
                                 if (log.event === 'child_added') {
-                                    var newEvent:ISyncServiceChangeEvent = syncPoint.recentEvents.$getRecord(log.key);
-                                    if (newEvent.userId !== initializationParams.userId) {
-                                        syncPoint.processChanges(newEvent);
-                                    }
+                                    var newEvent: ISyncServiceChangeEvent = syncPoint.recentEvents.$getRecord(log.key);
+                                    /** Capture if event was caused by current user */
+                                    var externalTrigger = newEvent.userId !== initializationParams.userId;
+                                    syncPoint.processChanges(newEvent, externalTrigger);
                                 }
                             });
                         });
@@ -163,12 +160,17 @@ module ap.sync {
 
         }
 
-        processChanges(newEvent:ISyncServiceChangeEvent) {
+        /**
+         *
+         * @param {ISyncServiceChangeEvent} newEvent Details of event.
+         * @param {boolean} externalTrigger Was the changed caused by another user.
+         */
+        private processChanges(newEvent: ISyncServiceChangeEvent, externalTrigger: boolean): void {
             var syncPoint = this;
             /** Notify subscribers */
             _.each(syncPoint.subscriptions, (callback) => {
                 if (_.isFunction(callback)) {
-                    callback(newEvent);
+                    callback(newEvent, externalTrigger);
                 }
             });
         }
@@ -180,7 +182,7 @@ module ap.sync {
          * @description
          * Notify all other users listening to this model that a change has been made.
          */
-        registerChange(changeType:string, listItemId:number) {
+        registerChange(changeType: string, listItemId: number) {
             var syncPoint = this;
             serviceIsInitialized
                 .then((initializationParams) => {
@@ -204,20 +206,44 @@ module ap.sync {
          * @name SyncPoint.subscribeToChanges
          * @methodOf SyncPoint
          * @description
-         * Allows subscribers (controllers) to be notified when change is made
+         * Allows subscribers (controllers & services) to be notified when change is made.
          *
          * @param {function} callback Callback to execute after a change is made.
+         * @param {boolean} [unsubscribeOnStateChange = true]
+         * @returns {function} Function used to unsubscribe.
          */
-        subscribeToChanges(callback:Function) {
+        subscribeToChanges(callback: Function, unsubscribeOnStateChange: boolean = true): Function {
             var syncPoint = this;
             if (syncPoint.subscriptions.indexOf(callback) === -1) {
                 /** Only register new subscriptions, ignore if subscription already exists */
                 syncPoint.subscriptions.push(callback);
             }
+
+            var unsubscribe = () => this.unsubscribe(callback);
+
+            if(unsubscribeOnStateChange) {
+                //var $rootScope = $injector.get('$rootScope');
+
+                /** Unsubscribe from notifications when we leave this state */
+                $rootScope.$on('$stateChangeStart', () => {
+                    unsubscribe();
+                });
+
+            }
+
+            return unsubscribe;
+
+        }
+
+        unsubscribe(callback) {
+            var index = this.subscriptions.indexOf(callback);
+            if (index !== -1) {
+                this.subscriptions.splice(index, 1);
+            }
         }
     }
 
-    export function Lock():ng.IPromise<{reference:IListItemLock[]; unlock(lockReference:IListItemLock)}> {
+    export function Lock(): ng.IPromise<{reference:IListItemLock[]; unlock(lockReference: IListItemLock)}> {
         var deferred = $q.defer();
 
         var listItem = <ap.IListItem>this;
