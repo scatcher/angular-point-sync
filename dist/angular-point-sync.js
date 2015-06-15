@@ -1,3 +1,5 @@
+/// <reference path="../typings/ap.d.ts" />
+/// <reference path="../typings/tsd.d.ts" />
 /**
  * @ngdoc service
  * @name ap.sync
@@ -25,12 +27,12 @@
  * <h3>Example of how to register from the model</h3>
  * <pre>
  * //Add a subscription service that will automatically keep data in sync with all other active users
- * model.sync = apSyncService.synchronizeData(model);
+ * model.sync = apSyncService.createSyncPoint(model);
  *
  * model.sync.subscribeToChanges(function () {
  *    //Do something because a change has occurred
  *
- *  });
+ *  }, true); //Unsubscribe on route change so we don't keep reference in future
  * </pre>
  *
  */
@@ -39,40 +41,68 @@ var ap;
     var sync;
     (function (sync) {
         'use strict';
-        var $q, $firebaseArray, $rootScope, apListItemFactory, deferred, serviceIsInitialized;
-        var SyncService = (function () {
-            function SyncService(_$firebaseArray_, _$q_, _apListItemFactory_, _$rootScope_) {
-                this.Lock = Lock;
-                /** Expose to service scope */
-                $q = _$q_;
-                $firebaseArray = _$firebaseArray_;
-                apListItemFactory = _apListItemFactory_;
-                $rootScope = _$rootScope_;
-                /** Create a deferred object that will allow service to proceed once a userId is provided */
-                deferred = $q.defer();
-                serviceIsInitialized = deferred.promise;
+        angular.module('angularPoint')
+            .service('apSyncService', sync.SyncService);
+    })(sync = ap.sync || (ap.sync = {}));
+})(ap || (ap = {}));
+
+/// <reference path="../typings/ap.d.ts" />
+/// <reference path="../typings/tsd.d.ts" />
+var ap;
+(function (ap) {
+    var sync;
+    (function (sync) {
+        var _this = this;
+        'use strict';
+        sync.Lock = function () {
+            var deferred = sync.$q.defer();
+            var listItem = _this;
+            /** Only can lock existing records */
+            if (listItem.id) {
+                var model = listItem.getModel();
+                /** Make sure user has rights to edit */
+                var userPermMask = listItem.resolvePermissions();
+                if (userPermMask.EditListItems) {
+                    sync.serviceIsInitialized
+                        .then(function (initializationParams) {
+                        /** Reference to the firebase lock queue for this record*/
+                        var ref = new Firebase(initializationParams.fireBaseUrl + 'locks/' + model.list.title + '/' + listItem.id);
+                        var lockQueue = sync.$firebaseArray(ref);
+                        /** Reference to the lock record I created */
+                        var myLock = lockQueue.$add({
+                            userId: initializationParams.userId,
+                            time: Firebase.ServerValue.TIMESTAMP
+                        });
+                        /** Passed as a reference so we can remove the lock when the modal form is closed*/
+                        var unlock = function () { return myLock.then(function (lockReference) { return lockReference.remove(); }); };
+                        /** Remove the lock in the event the user looses connection, changes page, or closes browser*/
+                        myLock.then(function (lockReference) {
+                            lockReference.onDisconnect().remove();
+                            deferred.resolve({ reference: lockQueue, unlock: unlock });
+                        });
+                    });
+                }
+                else {
+                    /** User doesn't have edit rights */
+                    deferred.resolve({});
+                }
             }
-            SyncService.prototype.createSyncPoint = function (model) {
-                return new SyncPoint(model);
-            };
-            /**
-             * @description Service waits for userId to be provided before adding the watch to event array.
-             * @param {{userId: userId, fireBaseUrl: fireBaseUrl}} userId
-             */
-            /**
-             * @description Service waits for userId to be provided before adding the watch to event array.
-             * @param {number} userId
-             * @param {string} fireBaseUrl
-             */
-            SyncService.prototype.initialize = function (userId, fireBaseUrl) {
-                deferred.resolve({ userId: userId, fireBaseUrl: fireBaseUrl });
-                apListItemFactory.ListItem.prototype.lock = Lock;
-            };
-            /** Minification safe - we're using leading and trailing underscores but gulp plugin doesn't treat them correctly */
-            SyncService.$inject = ['$firebaseArray', '$q', 'apListItemFactory', '$rootScope'];
-            return SyncService;
-        })();
-        sync.SyncService = SyncService;
+            else {
+                /** New record so can't lock */
+                deferred.resolve({});
+            }
+            return deferred.promise;
+        };
+    })(sync = ap.sync || (ap.sync = {}));
+})(ap || (ap = {}));
+
+/// <reference path="../typings/ap.d.ts" />
+/// <reference path="../typings/tsd.d.ts" />
+var ap;
+(function (ap) {
+    var sync;
+    (function (sync) {
+        'use strict';
         var SyncPoint = (function () {
             /**
              *
@@ -85,11 +115,13 @@ var ap;
                 /** Container to hold all current subscriptions for the model */
                 this.subscriptions = [];
                 var syncPoint = this;
-                serviceIsInitialized.then(function (initializationParams) {
+                sync.serviceIsInitialized
+                    .then(function (initializationParams) {
                     syncPoint.changeNotifier = new Firebase(initializationParams.fireBaseUrl + '/changes/' + model.list.title);
                     var query = syncPoint.changeNotifier.limitToLast(syncPoint.eventLogLength);
-                    syncPoint.recentEvents = $firebaseArray(query);
-                    syncPoint.recentEvents.$loaded().then(function (eventArray) {
+                    syncPoint.recentEvents = sync.$firebaseArray(query);
+                    syncPoint.recentEvents.$loaded()
+                        .then(function (eventArray) {
                         /** Fired when anyone updates a list item */
                         syncPoint.recentEvents.$watch(function (log) {
                             if (log.event === 'child_added') {
@@ -125,7 +157,8 @@ var ap;
              */
             SyncPoint.prototype.registerChange = function (changeType, listItemId) {
                 var syncPoint = this;
-                serviceIsInitialized.then(function (initializationParams) {
+                sync.serviceIsInitialized
+                    .then(function (initializationParams) {
                     if (syncPoint.recentEvents.length >= syncPoint.eventLogLength) {
                         /** Trim the log to prevent unnecessary size */
                         syncPoint.recentEvents.$remove(0);
@@ -161,7 +194,7 @@ var ap;
                 if (unsubscribeOnStateChange) {
                     //var $rootScope = $injector.get('$rootScope');
                     /** Unsubscribe from notifications when we leave this state */
-                    $rootScope.$on('$stateChangeStart', function () {
+                    sync.$rootScope.$on('$stateChangeStart', function () {
                         unsubscribe();
                     });
                 }
@@ -176,45 +209,51 @@ var ap;
             return SyncPoint;
         })();
         sync.SyncPoint = SyncPoint;
-        function Lock() {
-            var deferred = $q.defer();
-            var listItem = this;
-            /** Only can lock existing records */
-            if (listItem.id) {
-                var model = listItem.getModel();
-                /** Make sure user has rights to edit */
-                var userPermMask = listItem.resolvePermissions();
-                if (userPermMask.EditListItems) {
-                    serviceIsInitialized.then(function (initializationParams) {
-                        /** Reference to the firebase lock queue for this record*/
-                        var ref = new Firebase(initializationParams.fireBaseUrl + 'locks/' + model.list.title + '/' + listItem.id);
-                        var lockQueue = $firebaseArray(ref);
-                        /** Reference to the lock record I created */
-                        var myLock = lockQueue.$add({
-                            userId: initializationParams.userId,
-                            time: Firebase.ServerValue.TIMESTAMP
-                        });
-                        /** Passed as a reference so we can remove the lock when the modal form is closed*/
-                        var unlock = function () { return myLock.then(function (lockReference) { return lockReference.remove(); }); };
-                        /** Remove the lock in the event the user looses connection, changes page, or closes browser*/
-                        myLock.then(function (lockReference) {
-                            lockReference.onDisconnect().remove();
-                            deferred.resolve({ reference: lockQueue, unlock: unlock });
-                        });
-                    });
-                }
-                else {
-                    /** User doesn't have edit rights */
-                    deferred.resolve({});
-                }
-            }
-            else {
-                /** New record so can't lock */
-                deferred.resolve({});
-            }
-            return deferred.promise;
-        }
-        sync.Lock = Lock;
-        angular.module('angularPoint').service('apSyncService', SyncService);
     })(sync = ap.sync || (ap.sync = {}));
 })(ap || (ap = {}));
+
+/// <reference path="../typings/ap.d.ts" />
+/// <reference path="../typings/tsd.d.ts" />
+var ap;
+(function (ap) {
+    var sync;
+    (function (sync) {
+        'use strict';
+        sync.$q, sync.$firebaseArray, sync.$rootScope, sync.apListItemFactory, sync.deferred, sync.serviceIsInitialized;
+        var SyncService = (function () {
+            function SyncService(_$firebaseArray_, _$q_, _apListItemFactory_, _$rootScope_) {
+                this.Lock = sync.Lock;
+                /** Expose to service scope */
+                sync.$q = _$q_;
+                sync.$firebaseArray = _$firebaseArray_;
+                sync.apListItemFactory = _apListItemFactory_;
+                sync.$rootScope = _$rootScope_;
+                /** Create a deferred object that will allow service to proceed once a userId is provided */
+                sync.deferred = sync.$q.defer();
+                sync.serviceIsInitialized = sync.deferred.promise;
+            }
+            SyncService.prototype.createSyncPoint = function (model) {
+                return new sync.SyncPoint(model);
+            };
+            /**
+             * @description Service waits for userId to be provided before adding the watch to event array.
+             * @param {{userId: userId, fireBaseUrl: fireBaseUrl}} userId
+             */
+            /**
+             * @description Service waits for userId to be provided before adding the watch to event array.
+             * @param {number} userId
+             * @param {string} fireBaseUrl
+             */
+            SyncService.prototype.initialize = function (userId, fireBaseUrl) {
+                sync.deferred.resolve({ userId: userId, fireBaseUrl: fireBaseUrl });
+                sync.apListItemFactory.ListItem.prototype.lock = sync.Lock;
+            };
+            /** Minification safe - we're using leading and trailing underscores but gulp plugin doesn't treat them correctly */
+            SyncService.$inject = ['$firebaseArray', '$q', 'apListItemFactory', '$rootScope'];
+            return SyncService;
+        })();
+        sync.SyncService = SyncService;
+    })(sync = ap.sync || (ap.sync = {}));
+})(ap || (ap = {}));
+
+//# sourceMappingURL=angular-point-sync.js.map
