@@ -1,6 +1,6 @@
 {
   "name": "angular-point-sync",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "Supports 3-way data binding if you decide to incorporate firebase (any change by any user to a list item is mirrored across users). The data isn't saved to firebase but the change event is so all subscribers are notified to request an update from SharePoint.",
   "main": "dist/angular-point-sync.js",
   "dependencies": {},
