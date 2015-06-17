@@ -4,11 +4,10 @@ var ap;
 (function (ap) {
     var sync;
     (function (sync) {
-        var _this = this;
         'use strict';
-        sync.Lock = function () {
+        function Lock() {
             var deferred = sync.$q.defer();
-            var listItem = _this;
+            var listItem = this;
             /** Only can lock existing records */
             if (listItem.id) {
                 var model = listItem.getModel();
@@ -44,7 +43,8 @@ var ap;
                 deferred.resolve({});
             }
             return deferred.promise;
-        };
+        }
+        sync.Lock = Lock;
     })(sync = ap.sync || (ap.sync = {}));
 })(ap || (ap = {}));
 

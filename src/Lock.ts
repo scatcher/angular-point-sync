@@ -3,8 +3,8 @@
 
 module ap.sync {
     'use strict';
-
-    export var Lock = (): ng.IPromise<{reference:IListItemLock[]; unlock(lockReference: IListItemLock)}> => {
+    
+    export function Lock(): ng.IPromise<{reference:IListItemLock[]; unlock(lockReference: IListItemLock)}> {
         var deferred = $q.defer();
 
         var listItem = this;
