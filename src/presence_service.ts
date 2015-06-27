@@ -1,4 +1,5 @@
-/// <reference path="sync_service" />
+/// <reference path="../typings/ap.d.ts" />
+/// <reference path="../typings/tsd.d.ts" />
 
 module ap.sync {
     'use strict';

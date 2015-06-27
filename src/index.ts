@@ -1,5 +1,8 @@
-/// <reference path="../typings/ap.d.ts" />
 /// <reference path="../typings/tsd.d.ts" />
+/// <reference path="sync_point.ts" />
+/// <reference path="lock.ts" />
+/// <reference path="sync_service.ts" />
+/// <reference path="presence_service.ts" />
 
 /**
  * @ngdoc service

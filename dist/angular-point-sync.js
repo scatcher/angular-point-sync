@@ -1,107 +1,5 @@
 /// <reference path="../typings/ap.d.ts" />
 /// <reference path="../typings/tsd.d.ts" />
-/**
- * @ngdoc service
- * @name ap.sync
- * @description
- * Supports 3-way data binding if you decide to incorporate firebase (any change by any user
- * to a list item is mirrored across users). The data isn't saved to firebase but the change
- * event is so all subscribers are notified to request an update from SharePoint.
- *
- * In order to get this service to work, you need to have angularFire installed and have your
- * firebase url set at apConfig.firebaseURL.
- *
- * This will create a change point at: apConfig.firebaseURL + '/changes/' + model.list.title
- * The point contains Firebase.ServerValue.TIMESTAMP to determine the time of the most recent change.
- *
- * @example
- * <h3>Example of how to set the firebase url</h3>
- * <pre>
- * .run(function (apConfig) {
- *   //Set the folder where offline XML is stored
- *   apConfig.firebaseURL = 'My Firebase URL';
- *
- * });
- * </pre>
- *
- * <h3>Example of how to register from the model</h3>
- * <pre>
- * //Add a subscription service that will automatically keep data in sync with all other active users
- * model.sync = apSyncService.createSyncPoint(model);
- *
- * model.sync.subscribeToChanges(function () {
- *    //Do something because a change has occurred
- *
- *  }, true); //Unsubscribe on route change so we don't keep reference in future
- * </pre>
- *
- */
-var ap;
-(function (ap) {
-    var sync;
-    (function (sync) {
-        'use strict';
-        angular.module('apSync', ['angularPoint', 'toastr'])
-            .service('apSyncService', sync.SyncService)
-            .service('apPresenceService', sync.PresenceService)
-            .run(Run);
-        //Instantiate immediately
-        function Run(apPresenceService) { }
-    })(sync = ap.sync || (ap.sync = {}));
-})(ap || (ap = {}));
-
-/// <reference path="../typings/ap.d.ts" />
-/// <reference path="../typings/tsd.d.ts" />
-var ap;
-(function (ap) {
-    var sync;
-    (function (sync) {
-        'use strict';
-        function Lock() {
-            var deferred = sync.$q.defer();
-            var listItem = this;
-            /** Only can lock existing records */
-            if (listItem.id) {
-                var model = listItem.getModel();
-                /** Make sure user has rights to edit */
-                var userPermMask = listItem.resolvePermissions();
-                if (userPermMask.EditListItems) {
-                    sync.serviceIsInitialized
-                        .then(function (initializationParams) {
-                        /** Reference to the firebase lock queue for this record*/
-                        var ref = new Firebase(initializationParams.firebaseUrl + 'locks/' + model.list.title + '/' + listItem.id);
-                        var lockQueue = sync.$firebaseArray(ref);
-                        /** Reference to the lock record I created */
-                        var myLock = lockQueue.$add({
-                            userId: initializationParams.userId,
-                            time: Firebase.ServerValue.TIMESTAMP
-                        });
-                        /** Passed as a reference so we can remove the lock when the modal form is closed*/
-                        var unlock = function () { return myLock.then(function (lockReference) { return lockReference.remove(); }); };
-                        /** Remove the lock in the event the user looses connection, changes page, or closes browser*/
-                        myLock.then(function (lockReference) {
-                            lockReference.onDisconnect().remove();
-                            deferred.resolve({ reference: lockQueue, unlock: unlock });
-                        });
-                    });
-                }
-                else {
-                    /** User doesn't have edit rights */
-                    deferred.resolve({});
-                }
-            }
-            else {
-                /** New record so can't lock */
-                deferred.resolve({});
-            }
-            return deferred.promise;
-        }
-        sync.Lock = Lock;
-    })(sync = ap.sync || (ap.sync = {}));
-})(ap || (ap = {}));
-
-/// <reference path="../typings/ap.d.ts" />
-/// <reference path="../typings/tsd.d.ts" />
 var ap;
 (function (ap) {
     var sync;
@@ -216,9 +114,58 @@ var ap;
     })(sync = ap.sync || (ap.sync = {}));
 })(ap || (ap = {}));
 
+/// <reference path="../typings/ap.d.ts" />
 /// <reference path="../typings/tsd.d.ts" />
-/// <reference path="sync_point" />
-/// <reference path="lock" />
+var ap;
+(function (ap) {
+    var sync;
+    (function (sync) {
+        'use strict';
+        function Lock() {
+            var deferred = sync.$q.defer();
+            var listItem = this;
+            /** Only can lock existing records */
+            if (listItem.id) {
+                var model = listItem.getModel();
+                /** Make sure user has rights to edit */
+                var userPermMask = listItem.resolvePermissions();
+                if (userPermMask.EditListItems) {
+                    sync.serviceIsInitialized
+                        .then(function (initializationParams) {
+                        /** Reference to the firebase lock queue for this record*/
+                        var ref = new Firebase(initializationParams.firebaseUrl + 'locks/' + model.list.title + '/' + listItem.id);
+                        var lockQueue = sync.$firebaseArray(ref);
+                        /** Reference to the lock record I created */
+                        var myLock = lockQueue.$add({
+                            userId: initializationParams.userId,
+                            time: Firebase.ServerValue.TIMESTAMP
+                        });
+                        /** Passed as a reference so we can remove the lock when the modal form is closed*/
+                        var unlock = function () { return myLock.then(function (lockReference) { return lockReference.remove(); }); };
+                        /** Remove the lock in the event the user looses connection, changes page, or closes browser*/
+                        myLock.then(function (lockReference) {
+                            lockReference.onDisconnect().remove();
+                            deferred.resolve({ reference: lockQueue, unlock: unlock });
+                        });
+                    });
+                }
+                else {
+                    /** User doesn't have edit rights */
+                    deferred.resolve({});
+                }
+            }
+            else {
+                /** New record so can't lock */
+                deferred.resolve({});
+            }
+            return deferred.promise;
+        }
+        sync.Lock = Lock;
+    })(sync = ap.sync || (ap.sync = {}));
+})(ap || (ap = {}));
+
+/// <reference path="../typings/ap.d.ts" />
+/// <reference path="../typings/tsd.d.ts" />
 var ap;
 (function (ap) {
     var sync;
@@ -261,7 +208,8 @@ var ap;
     })(sync = ap.sync || (ap.sync = {}));
 })(ap || (ap = {}));
 
-/// <reference path="sync_service" />
+/// <reference path="../typings/ap.d.ts" />
+/// <reference path="../typings/tsd.d.ts" />
 var ap;
 (function (ap) {
     var sync;
@@ -408,6 +356,61 @@ var ap;
                 M.splice(1, 1, tem[1]);
             return M.join(' ');
         }
+    })(sync = ap.sync || (ap.sync = {}));
+})(ap || (ap = {}));
+
+/// <reference path="../typings/tsd.d.ts" />
+/// <reference path="sync_point.ts" />
+/// <reference path="lock.ts" />
+/// <reference path="sync_service.ts" />
+/// <reference path="presence_service.ts" />
+/**
+ * @ngdoc service
+ * @name ap.sync
+ * @description
+ * Supports 3-way data binding if you decide to incorporate firebase (any change by any user
+ * to a list item is mirrored across users). The data isn't saved to firebase but the change
+ * event is so all subscribers are notified to request an update from SharePoint.
+ *
+ * In order to get this service to work, you need to have angularFire installed and have your
+ * firebase url set at apConfig.firebaseURL.
+ *
+ * This will create a change point at: apConfig.firebaseURL + '/changes/' + model.list.title
+ * The point contains Firebase.ServerValue.TIMESTAMP to determine the time of the most recent change.
+ *
+ * @example
+ * <h3>Example of how to set the firebase url</h3>
+ * <pre>
+ * .run(function (apConfig) {
+ *   //Set the folder where offline XML is stored
+ *   apConfig.firebaseURL = 'My Firebase URL';
+ *
+ * });
+ * </pre>
+ *
+ * <h3>Example of how to register from the model</h3>
+ * <pre>
+ * //Add a subscription service that will automatically keep data in sync with all other active users
+ * model.sync = apSyncService.createSyncPoint(model);
+ *
+ * model.sync.subscribeToChanges(function () {
+ *    //Do something because a change has occurred
+ *
+ *  }, true); //Unsubscribe on route change so we don't keep reference in future
+ * </pre>
+ *
+ */
+var ap;
+(function (ap) {
+    var sync;
+    (function (sync) {
+        'use strict';
+        angular.module('apSync', ['angularPoint', 'toastr'])
+            .service('apSyncService', sync.SyncService)
+            .service('apPresenceService', sync.PresenceService)
+            .run(Run);
+        //Instantiate immediately
+        function Run(apPresenceService) { }
     })(sync = ap.sync || (ap.sync = {}));
 })(ap || (ap = {}));
 

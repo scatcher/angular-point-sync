@@ -1,6 +1,5 @@
+/// <reference path="../typings/ap.d.ts" />
 /// <reference path="../typings/tsd.d.ts" />
-/// <reference path="sync_point" />
-/// <reference path="lock" />
 
 module ap.sync {
     'use strict';
