@@ -20,7 +20,7 @@ module ap.sync {
                     .then((initializationParams) => {
 
                         /** Reference to the firebase lock queue for this record*/
-                        var ref = new Firebase(initializationParams.fireBaseUrl + 'locks/' + model.list.title + '/' + listItem.id);
+                        var ref = new Firebase(initializationParams.firebaseUrl + 'locks/' + model.list.title + '/' + listItem.id);
                         var lockQueue = $firebaseArray(ref);
 
                         /** Reference to the lock record I created */

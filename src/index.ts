@@ -41,7 +41,12 @@
 module ap.sync {
     'use strict';
 
-    angular.module('angularPoint')
-        .service('apSyncService', SyncService);
+    angular.module('apSync', ['angularPoint', 'toastr'])
+        .service('apSyncService', SyncService)
+        .service('apPresenceService', PresenceService)
+        .run(Run)
+        
+    //Instantiate immediately
+    function Run(apPresenceService) {}
 
 }

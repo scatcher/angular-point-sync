@@ -13,7 +13,7 @@ module ap.sync {
 
     export interface ISyncServiceInitializationParams {
         userId: number;
-        fireBaseUrl: string;
+        firebaseUrl: string;
     }
 
     export interface ISyncPoint {
@@ -37,13 +37,13 @@ module ap.sync {
          * @param model
          * @param updateQuery
          */
-        constructor(private model: ap.IModel) {
+        constructor(private model: ap.Model) {
             var syncPoint = this;
 
             serviceIsInitialized
                 .then((initializationParams: ISyncServiceInitializationParams) => {
 
-                    syncPoint.changeNotifier = new Firebase(initializationParams.fireBaseUrl + '/changes/' + model.list.title);
+                    syncPoint.changeNotifier = new Firebase(initializationParams.firebaseUrl + '/changes/' + model.list.title);
 
                     var query = syncPoint.changeNotifier.limitToLast(syncPoint.eventLogLength);
 
