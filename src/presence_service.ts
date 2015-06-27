@@ -126,7 +126,7 @@ module ap.sync {
             var notificationsRef = new Firebase(this.userConnectionUrl + 'connections/' + sessionKey + '/notifications');
             return service.$firebaseArray(notificationsRef).$loaded();
         }
-        getUsers() {
+        getUsers(): ng.IPromise<IFirebaseUsersObject> {
             return serviceIsInitialized.then((initializationParamsObject: ISyncServiceInitializationParams) => {
                 if(!service.users) {
                     var usersRef = new Firebase(initializationParamsObject.firebaseUrl + 'users');
