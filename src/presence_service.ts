@@ -11,8 +11,8 @@ module ap.sync {
         connected: number;
         lastActive: number;
         notifications?: IUserNotification[];
+        path: string;        
         reload: boolean; //Hard refresh browser
-        path: string;
     }
 
     export interface IUserNotification {
@@ -20,6 +20,8 @@ module ap.sync {
         title?: string;
         toastType: string;
         toastrOptions?: Object;
+        senderId?:number;
+        senderSessionKey?:string;
     }
 
     export interface IFirebaseUsersObject {
@@ -85,7 +87,8 @@ module ap.sync {
                             browser: identifyBrowser(),
                             connected: Firebase.ServerValue.TIMESTAMP,
                             lastActive: Firebase.ServerValue.TIMESTAMP,
-                            path: $location.url()
+                            path: $location.url(),
+                            reload: false
                         });
 
                         //Update the current path whenever state changes
@@ -114,21 +117,36 @@ module ap.sync {
 
         }
         deleteSessionData(userId: number, sessionKey: string) {
-            var sessionRef = new Firebase(this.userConnectionUrl + 'connections/' + sessionKey);
-            return sessionRef.remove();
+            return service.getSessionConnectioUrl(userId, sessionKey).then((sessionConnectionUrl) => {
+                var sessionRef = new Firebase(sessionConnectionUrl);
+                return sessionRef.remove();
+            });
         }
 
         displayUserNotification(notification: IUserNotification): void {
             service.toastr[notification.toastType](notification.message, notification.title, notification.toastrOptions);
         }
-        
+
         getSessionNotificationsArray(userId: number, sessionKey: string): ng.IPromise<AngularFireArray> {
-            var notificationsRef = new Firebase(this.userConnectionUrl + 'connections/' + sessionKey + '/notifications');
-            return service.$firebaseArray(notificationsRef).$loaded();
+            return service.getSessionConnectioUrl(userId, sessionKey).then((sessionConnectionUrl) => {
+                var notificationsRef = new Firebase(sessionConnectionUrl + '/notifications');
+                return service.$firebaseArray(notificationsRef).$loaded();
+            })
         }
+        getSessionConnectioUrl(userId: number, sessionKey: string): ng.IPromise<string> {
+            return serviceIsInitialized.then((initializationParamsObject: ISyncServiceInitializationParams) => {
+                return initializationParamsObject.firebaseUrl + 'users/' + userId + '/connections/' + sessionKey;
+            });
+        }
+        getUserConnectionUrl(userId: number): ng.IPromise<string> {
+            return serviceIsInitialized.then((initializationParamsObject: ISyncServiceInitializationParams) => {
+                return initializationParamsObject.firebaseUrl + 'users/' + userId;
+            });
+        }
+
         getUsers(): ng.IPromise<IFirebaseUsersObject> {
             return serviceIsInitialized.then((initializationParamsObject: ISyncServiceInitializationParams) => {
-                if(!service.users) {
+                if (!service.users) {
                     var usersRef = new Firebase(initializationParamsObject.firebaseUrl + 'users');
                     service.users = service.$firebaseObject(usersRef);
                 }
@@ -136,13 +154,15 @@ module ap.sync {
             });
         }
         reloadBrowser(userId: number, sessionKey: string): void {
-            var sessionRef = new Firebase(this.userConnectionUrl + 'connections/' + sessionKey);
-            var sessionObject = service.$firebaseObject(sessionRef);
-            sessionObject.$loaded()
-                .then(() => {
-                    sessionObject.reload = true;
-                    sessionObject.$save();
-                })
+            service.getSessionConnectioUrl(userId, sessionKey).then((sessionConnectionUrl) => {
+                var sessionRef = new Firebase(sessionConnectionUrl);
+                var sessionObject = service.$firebaseObject(sessionRef);
+                sessionObject.$loaded()
+                    .then(() => {
+                        sessionObject.reload = true;
+                        sessionObject.$save();
+                    })
+            });
         }
         sendUserNotification(userId: number, sessionKey: string, notification: IUserNotification): ng.IPromise<IUserNotification> {
             var deferred = this.$q.defer();

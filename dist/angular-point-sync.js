@@ -256,7 +256,8 @@ var ap;
                                 browser: identifyBrowser(),
                                 connected: Firebase.ServerValue.TIMESTAMP,
                                 lastActive: Firebase.ServerValue.TIMESTAMP,
-                                path: $location.url()
+                                path: $location.url(),
+                                reload: false
                             });
                             //Update the current path whenever state changes
                             $rootScope.$on('$stateChangeSuccess', function (event, current, previous, rejection) {
@@ -279,15 +280,29 @@ var ap;
                 });
             }
             PresenceService.prototype.deleteSessionData = function (userId, sessionKey) {
-                var sessionRef = new Firebase(this.userConnectionUrl + 'connections/' + sessionKey);
-                return sessionRef.remove();
+                return service.getSessionConnectioUrl(userId, sessionKey).then(function (sessionConnectionUrl) {
+                    var sessionRef = new Firebase(sessionConnectionUrl);
+                    return sessionRef.remove();
+                });
             };
             PresenceService.prototype.displayUserNotification = function (notification) {
                 service.toastr[notification.toastType](notification.message, notification.title, notification.toastrOptions);
             };
             PresenceService.prototype.getSessionNotificationsArray = function (userId, sessionKey) {
-                var notificationsRef = new Firebase(this.userConnectionUrl + 'connections/' + sessionKey + '/notifications');
-                return service.$firebaseArray(notificationsRef).$loaded();
+                return service.getSessionConnectioUrl(userId, sessionKey).then(function (sessionConnectionUrl) {
+                    var notificationsRef = new Firebase(sessionConnectionUrl + '/notifications');
+                    return service.$firebaseArray(notificationsRef).$loaded();
+                });
+            };
+            PresenceService.prototype.getSessionConnectioUrl = function (userId, sessionKey) {
+                return sync.serviceIsInitialized.then(function (initializationParamsObject) {
+                    return initializationParamsObject.firebaseUrl + 'users/' + userId + '/connections/' + sessionKey;
+                });
+            };
+            PresenceService.prototype.getUserConnectionUrl = function (userId) {
+                return sync.serviceIsInitialized.then(function (initializationParamsObject) {
+                    return initializationParamsObject.firebaseUrl + 'users/' + userId;
+                });
             };
             PresenceService.prototype.getUsers = function () {
                 return sync.serviceIsInitialized.then(function (initializationParamsObject) {
@@ -299,12 +314,14 @@ var ap;
                 });
             };
             PresenceService.prototype.reloadBrowser = function (userId, sessionKey) {
-                var sessionRef = new Firebase(this.userConnectionUrl + 'connections/' + sessionKey);
-                var sessionObject = service.$firebaseObject(sessionRef);
-                sessionObject.$loaded()
-                    .then(function () {
-                    sessionObject.reload = true;
-                    sessionObject.$save();
+                service.getSessionConnectioUrl(userId, sessionKey).then(function (sessionConnectionUrl) {
+                    var sessionRef = new Firebase(sessionConnectionUrl);
+                    var sessionObject = service.$firebaseObject(sessionRef);
+                    sessionObject.$loaded()
+                        .then(function () {
+                        sessionObject.reload = true;
+                        sessionObject.$save();
+                    });
                 });
             };
             PresenceService.prototype.sendUserNotification = function (userId, sessionKey, notification) {
