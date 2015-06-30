@@ -133,20 +133,32 @@ var ap;
                     sync.serviceIsInitialized
                         .then(function (initializationParams) {
                         /** Reference to the firebase lock queue for this record*/
-                        var ref = new Firebase(initializationParams.firebaseUrl + 'locks/' + model.list.title + '/' + listItem.id);
-                        var lockQueue = sync.$firebaseArray(ref);
+                        var listItemLockRef = new Firebase(initializationParams.firebaseUrl + 'locks/' + model.list.title + '/' + listItem.id);
+                        var lockQueue = sync.$firebaseArray(listItemLockRef);
                         /** Reference to the lock record I created */
-                        var myLock = lockQueue.$add({
+                        var myLockRef = lockQueue.$add({
                             userId: initializationParams.userId,
                             time: Firebase.ServerValue.TIMESTAMP
                         });
                         /** Passed as a reference so we can remove the lock when the modal form is closed*/
-                        var unlock = function () { return myLock.then(function (lockReference) { return lockReference.remove(); }); };
-                        /** Remove the lock in the event the user looses connection, changes page, or closes browser*/
-                        myLock.then(function (lockReference) {
-                            lockReference.onDisconnect().remove();
-                            deferred.resolve({ reference: lockQueue, unlock: unlock });
+                        var unlock = function () { return myLockRef.then(function (myLock) { return myLock.remove(); }); };
+                        //Automatically remove any list item locks older than 4 hours
+                        lockQueue.$loaded(function () { return _.each(lockQueue, function (listItemLock) {
+                            if (moment().diff(lockQueue, 'hours') > 4) {
+                                console.log('Purging expired list item lock.', listItemLock);
+                                lockQueue.$remove(listItemLock);
+                            }
+                        }); });
+                        var lockReference = { lockQueue: lockQueue, myLockRef: myLockRef, unlock: unlock };
+                        myLockRef.then(function (lockRef) {
+                            /** Remove the lock in the event the user looses connection, changes page, or closes browser*/
+                            lockRef.onDisconnect().remove();
+                            // var key = lockRef.key();
+                            // var index = lockQueue.$indexFor(key); // returns location in the array                            
+                            // deferredLock.resolve(lockQueue[index]);
                         });
+                        // Include a referece to the lock in the queue                            
+                        deferred.resolve(lockReference);
                     });
                 }
                 else {

@@ -3,7 +3,7 @@
 
 module ap.sync {
     'use strict';
-	
+
     export var $q,
         $firebaseArray,
         $rootScope,
@@ -11,22 +11,16 @@ module ap.sync {
         deferred: ng.IDeferred<ISyncServiceInitializationParams>,
         serviceIsInitialized: ng.IPromise<ISyncServiceInitializationParams>;
 
-
-    export interface IListItemLock {
-        userId:number;
-        time: string;
-    }
-	
     export interface ISyncService {
-        createSyncPoint(model: ap.IModel):ISyncPoint;
-        initialize(userId: number, firebaseUrl: string);
-        Lock():ng.IPromise<{reference:IListItemLock[]; unlock(lockReference: IListItemLock)}>;
+        createSyncPoint(model: ap.IModel): ISyncPoint;
+        initialize(userId: number, firebaseUrl: string): void;
+        Lock: () => ng.IPromise<ILockReference>;
     }
 
     export class SyncService implements ISyncService {
         /** Minification safe - we're using leading and trailing underscores but gulp plugin doesn't treat them correctly */
         static $inject = ['$firebaseArray', '$q', 'apListItemFactory', '$rootScope'];
-        
+
         constructor(_$firebaseArray_, _$q_, _apListItemFactory_, _$rootScope_) {
             /** Expose to service scope */
             $q = _$q_;
@@ -52,8 +46,8 @@ module ap.sync {
          * @param {number} userId
          * @param {string} firebaseUrl
          */
-        initialize(userId: number, firebaseUrl: string) {
-            deferred.resolve({userId: userId, firebaseUrl: firebaseUrl});
+        initialize(userId: number, firebaseUrl: string): void {
+            deferred.resolve({ userId: userId, firebaseUrl: firebaseUrl });
             apListItemFactory.ListItem.prototype.lock = Lock;
         }
 
