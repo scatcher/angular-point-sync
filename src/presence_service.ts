@@ -11,7 +11,7 @@ module ap.sync {
         connected: number;
         lastActive: number;
         notifications?: IUserNotification[];
-        path: string;        
+        path: string;
         reload: boolean; //Hard refresh browser
     }
 
@@ -50,14 +50,14 @@ module ap.sync {
         userConnectionUrl: string;
         users: AngularFireObject;
         sessionConnection: Firebase;
-        static $inject = ['$q', '$rootScope', '$firebaseArray', '$firebaseObject', '$location', 'apSyncService', 'toastr'];
+        static $inject = ['$q', '$rootScope', '$firebaseArray', '$firebaseObject', '$location', 'apSyncService'];
         constructor(private $q: ng.IQService, $rootScope: angular.IRootScopeService, private $firebaseArray: AngularFireArrayService, private $firebaseObject: AngularFireObjectService,
-            $location: angular.ILocationService, apSyncService: SyncService, private toastr) {
+            $location: angular.ILocationService, apSyncService: SyncService) {
 
             service = this;
             var deferred = $q.defer();
             service.initializeSession = deferred.promise;
-            
+
             //Wait for SyncService to be initialized with current users userId and firebaseUrl
             serviceIsInitialized.then((initializationParamsObject: ISyncServiceInitializationParams) => {
                 var userId = initializationParamsObject.userId;
@@ -66,8 +66,8 @@ module ap.sync {
                 service.userConnectionUrl = firebaseUrl + 'users/' + userId + '/';
 
                 // var usersRef = new Firebase(firebaseUrl + 'users');
-                // service.users = $firebaseObject(usersRef).$loaded; 
-                    
+                // service.users = $firebaseObject(usersRef).$loaded;
+
                 // since I can connect from multiple devices or browser tabs, we store each connection instance separately
                 // any time that connectionsRef's value is null (i.e. has no children) I am offline
                 var thisConnectionRef = new Firebase(service.userConnectionUrl + 'connections');
@@ -80,7 +80,7 @@ module ap.sync {
                 connectedRef.on('value', function(snap) {
                     if (snap.val() === true) {
                         // We're connected (or reconnected)! Do anything here that should happen only if online (or on reconnect)
-                            
+
                         // add this device to my connections list
                         // this value contains info about the device and connection start timestamp
                         service.sessionConnection = thisConnectionRef.push({
@@ -98,7 +98,7 @@ module ap.sync {
                                 path: $location.url()
                             });
                         });
-                            
+
                         // when I disconnect, remove this device
                         service.sessionConnection.onDisconnect().remove();
 
@@ -107,7 +107,7 @@ module ap.sync {
 
                         var activeSessionObject = service.$firebaseObject(service.sessionConnection);
                         deferred.resolve(activeSessionObject);
-                        
+
                         // watch for events
                         service.watchForReloadEvent(activeSessionObject);
                         service.watchForNotifications(userId, activeSessionObject.$id);
@@ -124,7 +124,11 @@ module ap.sync {
         }
 
         displayUserNotification(notification: IUserNotification): void {
-            service.toastr[notification.toastType](notification.message, notification.title, notification.toastrOptions);
+            if(window.toastr) {
+                window.toastr[notification.toastType](notification.message, notification.title, notification.toastrOptions);
+            } else {
+                console[notification.toastType](notification.title, notification.message);
+            }
         }
 
         getSessionNotificationsArray(userId: number, sessionKey: string): ng.IPromise<AngularFireArray> {

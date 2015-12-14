@@ -44,11 +44,11 @@
 module ap.sync {
     'use strict';
 
-    angular.module('apSync', ['angularPoint', 'toastr'])
+    angular.module('apSync', ['angularPoint'])
         .service('apSyncService', SyncService)
         .service('apPresenceService', PresenceService)
         .run(Run)
-        
+
     //Instantiate immediately
     function Run(apPresenceService) {}
 

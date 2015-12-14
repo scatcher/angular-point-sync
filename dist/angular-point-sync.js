@@ -183,7 +183,6 @@ var ap;
     var sync;
     (function (sync) {
         'use strict';
-        sync.$q, sync.$firebaseArray, sync.$rootScope, sync.apListItemFactory, sync.deferred, sync.serviceIsInitialized;
         var SyncService = (function () {
             function SyncService(_$firebaseArray_, _$q_, _apListItemFactory_, _$rootScope_) {
                 this.Lock = sync.Lock;
@@ -236,11 +235,10 @@ var ap;
          * the session was started, and if not online when the last time they were online.
          */
         var PresenceService = (function () {
-            function PresenceService($q, $rootScope, $firebaseArray, $firebaseObject, $location, apSyncService, toastr) {
+            function PresenceService($q, $rootScope, $firebaseArray, $firebaseObject, $location, apSyncService) {
                 this.$q = $q;
                 this.$firebaseArray = $firebaseArray;
                 this.$firebaseObject = $firebaseObject;
-                this.toastr = toastr;
                 this.identifyBrowser = identifyBrowser;
                 service = this;
                 var deferred = $q.defer();
@@ -252,7 +250,7 @@ var ap;
                     var firebaseRoot = firebaseUrl.replace('offline/', '');
                     service.userConnectionUrl = firebaseUrl + 'users/' + userId + '/';
                     // var usersRef = new Firebase(firebaseUrl + 'users');
-                    // service.users = $firebaseObject(usersRef).$loaded; 
+                    // service.users = $firebaseObject(usersRef).$loaded;
                     // since I can connect from multiple devices or browser tabs, we store each connection instance separately
                     // any time that connectionsRef's value is null (i.e. has no children) I am offline
                     var thisConnectionRef = new Firebase(service.userConnectionUrl + 'connections');
@@ -298,7 +296,12 @@ var ap;
                 });
             };
             PresenceService.prototype.displayUserNotification = function (notification) {
-                service.toastr[notification.toastType](notification.message, notification.title, notification.toastrOptions);
+                if (window.toastr) {
+                    window.toastr[notification.toastType](notification.message, notification.title, notification.toastrOptions);
+                }
+                else {
+                    console[notification.toastType](notification.title, notification.message);
+                }
             };
             PresenceService.prototype.getSessionNotificationsArray = function (userId, sessionKey) {
                 return service.getSessionConnectioUrl(userId, sessionKey).then(function (sessionConnectionUrl) {
@@ -365,7 +368,7 @@ var ap;
                     }
                 });
             };
-            PresenceService.$inject = ['$q', '$rootScope', '$firebaseArray', '$firebaseObject', '$location', 'apSyncService', 'toastr'];
+            PresenceService.$inject = ['$q', '$rootScope', '$firebaseArray', '$firebaseObject', '$location', 'apSyncService'];
             return PresenceService;
         })();
         sync.PresenceService = PresenceService;
@@ -434,7 +437,7 @@ var ap;
     var sync;
     (function (sync) {
         'use strict';
-        angular.module('apSync', ['angularPoint', 'toastr'])
+        angular.module('apSync', ['angularPoint'])
             .service('apSyncService', sync.SyncService)
             .service('apPresenceService', sync.PresenceService)
             .run(Run);

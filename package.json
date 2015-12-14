@@ -1,16 +1,16 @@
 {
   "name": "angular-point-sync",
-  "version": "2.2.3",
+  "version": "2.2.4",
   "description": "Supports 3-way data binding if you decide to incorporate firebase (any change by any user to a list item is mirrored across users). The data isn't saved to firebase but the change event is so all subscribers are notified to request an update from SharePoint.",
   "main": "dist/angular-point-sync.js",
   "dependencies": {},
   "devDependencies": {
     "gulp": "~3.9.0",
-    "gulp-concat": "^2.5.2",
-    "gulp-sourcemaps": "^1.5.2",
-    "gulp-typescript": "^2.7.6",
-    "lodash": "~3.9.3",
-    "typescript": "^1.5.0-beta"
+    "gulp-concat": "^2.6.0",
+    "gulp-sourcemaps": "^1.6.0",
+    "gulp-typescript": "^2.10.0",
+    "lodash": "~3.10.1",
+    "typescript": "^1.7.3"
   },
   "keywords": [
     "AngularJS",
