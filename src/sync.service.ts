@@ -1,7 +1,6 @@
-import { Model } from 'angular-point';
-
-import { ISyncServiceInitializationParams, ISyncPoint, SyncPoint } from './sync_point';
-import { ILockReference, Lock } from './Lock';
+import {Model} from 'angular-point';
+import {ISyncServiceInitializationParams, ISyncPoint, SyncPoint} from './sync-point.factory';
+import {ILockReference, Lock} from './lock.factory';
 export var $q,
     $firebaseArray,
     $rootScope,
@@ -45,7 +44,7 @@ export class SyncService implements ISyncService {
      * @param {string} firebaseUrl
      */
     initialize(userId: number, firebaseUrl: string): void {
-        deferred.resolve({ userId: userId, firebaseUrl: firebaseUrl });
+        deferred.resolve({userId: userId, firebaseUrl: firebaseUrl});
         apListItemFactory.ListItem.prototype.lock = Lock;
     }
 

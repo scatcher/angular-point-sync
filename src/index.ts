@@ -1,5 +1,5 @@
-import {SyncService} from './sync_service';
-import {PresenceService} from './presence_service';
+import {SyncService} from './sync.service';
+import {PresenceService} from './presence.service';
 import {AngularPointModule} from 'angular-point';
 
 /**
@@ -48,3 +48,7 @@ AngularPointModule
     }]);
 
 
+export * from './lock.factory';
+export * from './presence.service';
+export * from './sync-point.factory';
+export * from './sync.service';

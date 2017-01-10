@@ -1,8 +1,7 @@
 import * as _ from 'lodash';
 import {Model} from 'angular-point';
-
 // import {Model} from '../angular-point/factories/apModelFactory';
-import {serviceIsInitialized, $firebaseArray, $rootScope} from './sync_service';
+import {serviceIsInitialized, $firebaseArray, $rootScope} from './sync.service';
 
 export interface ISyncServiceChangeEvent {
     changeType: string; // 'add'|'update'|'delete';

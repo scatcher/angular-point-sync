@@ -1,7 +1,7 @@
 import * as toastr from 'toastr';
 import * as _ from 'lodash';
-import {SyncService, serviceIsInitialized} from './sync_service';
-import {ISyncServiceInitializationParams} from './sync_point';
+import {SyncService, serviceIsInitialized} from './sync.service';
+import {ISyncServiceInitializationParams} from './sync-point.factory';
 var service: PresenceService;
 
 export interface IFirebaseSessionObject extends AngularFireObject {
