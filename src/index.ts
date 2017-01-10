@@ -1,12 +1,10 @@
-/// <reference path="../typings/tsd.d.ts" />
-/// <reference path="sync_point.ts" />
-/// <reference path="lock.ts" />
-/// <reference path="sync_service.ts" />
-/// <reference path="presence_service.ts" />
+import {SyncService} from './sync_service';
+import {PresenceService} from './presence_service';
+import {AngularPointModule} from 'angular-point';
 
 /**
  * @ngdoc service
- * @name ap.sync
+ * @name sync
  * @description
  * Supports 3-way data binding if you decide to incorporate firebase (any change by any user
  * to a list item is mirrored across users). The data isn't saved to firebase but the change
@@ -41,15 +39,12 @@
  *
  */
 
-module ap.sync {
-    'use strict';
 
-    angular.module('apSync', ['angularPoint', 'toastr'])
-        .service('apSyncService', SyncService)
-        .service('apPresenceService', PresenceService)
-        .run(Run)
-        
-    //Instantiate immediately
-    function Run(apPresenceService) {}
+AngularPointModule
+    .service('apSyncService', SyncService)
+    .service('apPresenceService', PresenceService)
+    // Instantiate immediately
+    .run(['apPresenceService', (apPresenceService) => {
+    }]);
 
-}
+

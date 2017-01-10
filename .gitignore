@@ -1,14 +1,15 @@
-# Set the default behavior, in case people don't have core.autocrlf set.
-* text=auto
-
-# Dependencies
 node_modules
-bower_components
 
-# Build
+reports
+typings
+out
 .tmp
+docs
+
+# Private
+/config/_private.conf.json
+.DS_Store
 
 # IDE
 .idea
-
-npm-debug.log
+.vscode

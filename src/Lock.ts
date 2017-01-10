@@ -1,8 +1,8 @@
-/// <reference path="../typings/ap.d.ts" />
-/// <reference path="../typings/tsd.d.ts" />
+import * as moment from 'moment';
+import * as _ from 'lodash';
 
-module ap.sync {
-    'use strict';
+import {serviceIsInitialized, $firebaseArray, $q} from './sync_service';
+
 
     export interface ILockReference {
         lockQueue: AngularFireArray;
@@ -16,32 +16,32 @@ module ap.sync {
     }
 
     export function Lock(): ng.IPromise<ILockReference> {
-        var deferred = $q.defer();
+        const deferred = $q.defer();
 
-        var listItem = this;
+        const listItem = this;
 
         /** Only can lock existing records */
         if (listItem.id) {
-            var model = listItem.getModel();
+            const model = listItem.getModel();
             /** Make sure user has rights to edit */
-            var userPermMask = listItem.resolvePermissions();
+            const userPermMask = listItem.resolvePermissions();
             if (userPermMask.EditListItems) {
 
                 serviceIsInitialized
                     .then((initializationParams) => {
 
                         /** Reference to the firebase lock queue for this record*/
-                        var listItemLockRef = new Firebase(initializationParams.firebaseUrl + 'locks/' + model.list.title + '/' + listItem.id);
-                        var lockQueue = $firebaseArray(listItemLockRef);
+                        const listItemLockRef = new Firebase(initializationParams.firebaseUrl + 'locks/' + model.list.title + '/' + listItem.id);
+                        const lockQueue = $firebaseArray(listItemLockRef);
 
                         /** Reference to the lock record I created */
-                        var myLockRef = lockQueue.$add({
+                        const myLockRef = lockQueue.$add({
                             userId: initializationParams.userId,
                             time: Firebase.ServerValue.TIMESTAMP
                         });
 
                         /** Passed as a reference so we can remove the lock when the modal form is closed*/
-                        var unlock = () => myLockRef.then((myLock) => myLock.remove());
+                        const unlock = () => myLockRef.then((myLock) => myLock.remove());
                         
                         //Automatically remove any list item locks older than 4 hours
                         lockQueue.$loaded(() => _.each(lockQueue, (listItemLock: IListItemLock) => {
@@ -51,7 +51,7 @@ module ap.sync {
                             }
                         }));
 
-                        var lockReference = { lockQueue, myLockRef, unlock };
+                        const lockReference = { lockQueue, myLockRef, unlock };
 
                         myLockRef.then((lockRef) => {
                             /** Remove the lock in the event the user looses connection, changes page, or closes browser*/
@@ -79,4 +79,3 @@ module ap.sync {
         return deferred.promise;
 
     }
-}
