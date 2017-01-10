@@ -1,10 +1,11 @@
 {
   "compilerOptions": {
-    "noImplicitAny": false,
     "module": "es2015",
     "target": "es5",
-    "emitDecoratorMetadata": true,
+    "noImplicitAny": false,
+    "sourceMap": true,
     "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
     "declaration": true,
     "moduleResolution": "node",
     "lib": ["es2015", "dom"]
@@ -13,11 +14,7 @@
     "./node_modules/@types"
   ],
   "exclude": [
-    "out",
     "node_modules",
-    "dist",
-    "dev",
-    "reports"
-  ],
-  "version": "2.0.6"
+    "dist"
+  ]
 }

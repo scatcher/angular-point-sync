@@ -1,10 +1,9 @@
 import * as _ from 'lodash';
 import {Model} from 'angular-point';
-// import {Model} from '../angular-point/factories/apModelFactory';
 import {serviceIsInitialized, $firebaseArray, $rootScope} from './sync.service';
 
 export interface ISyncServiceChangeEvent {
-    changeType: string; // 'add'|'update'|'delete';
+    changeType:  'add'|'update'|'delete';
     listItemId: number;
     userId: number;
     time: number;
@@ -31,20 +30,15 @@ export class SyncPoint implements ISyncPoint {
     /** Container to hold all current subscriptions for the model */
     subscriptions = [];
 
-    /**
-     *
-     * @param model
-     * @param updateQuery
-     */
     constructor(private model: Model) {
-        var syncPoint = this;
+        const syncPoint = this;
 
         serviceIsInitialized
             .then((initializationParams: ISyncServiceInitializationParams) => {
 
                 syncPoint.changeNotifier = new Firebase(initializationParams.firebaseUrl + '/changes/' + model.list.title);
 
-                var query = syncPoint.changeNotifier.limitToLast(syncPoint.eventLogLength);
+                const query = syncPoint.changeNotifier.limitToLast(syncPoint.eventLogLength);
 
                 syncPoint.recentEvents = $firebaseArray(query);
 
@@ -54,9 +48,9 @@ export class SyncPoint implements ISyncPoint {
                         /** Fired when anyone updates a list item */
                         syncPoint.recentEvents.$watch((log) => {
                             if (log.event === 'child_added') {
-                                var newEvent: ISyncServiceChangeEvent = syncPoint.recentEvents.$getRecord(log.key);
+                                const newEvent: ISyncServiceChangeEvent = syncPoint.recentEvents.$getRecord(log.key);
                                 /** Capture if event was caused by current user */
-                                var externalTrigger = newEvent.userId !== initializationParams.userId;
+                                const externalTrigger = newEvent.userId !== initializationParams.userId;
                                 syncPoint.processChanges(newEvent, externalTrigger);
                             }
                         });
@@ -74,7 +68,7 @@ export class SyncPoint implements ISyncPoint {
      * @param {boolean} externalTrigger Was the changed caused by another user.
      */
     private processChanges(newEvent: ISyncServiceChangeEvent, externalTrigger: boolean): void {
-        var syncPoint = this;
+        const syncPoint = this;
         /** Notify subscribers */
         _.each(syncPoint.subscriptions, (callback) => {
             if (_.isFunction(callback)) {
@@ -91,7 +85,7 @@ export class SyncPoint implements ISyncPoint {
      * Notify all other users listening to this model that a change has been made.
      */
     registerChange(changeType: string, listItemId: number) {
-        var syncPoint = this;
+        const syncPoint = this;
         serviceIsInitialized
             .then((initializationParams) => {
                 if (syncPoint.recentEvents.length >= syncPoint.eventLogLength) {
@@ -121,13 +115,13 @@ export class SyncPoint implements ISyncPoint {
      * @returns {function} Function used to unsubscribe.
      */
     subscribeToChanges(callback: Function, unsubscribeOnStateChange: boolean = true): Function {
-        var syncPoint = this;
+        const syncPoint = this;
         if (syncPoint.subscriptions.indexOf(callback) === -1) {
             /** Only register new subscriptions, ignore if subscription already exists */
             syncPoint.subscriptions.push(callback);
         }
 
-        var unsubscribe = () => this.unsubscribe(callback);
+        const unsubscribe = () => this.unsubscribe(callback);
 
         if (unsubscribeOnStateChange) {
             //var $rootScope = $injector.get('$rootScope');
@@ -144,7 +138,7 @@ export class SyncPoint implements ISyncPoint {
     }
 
     unsubscribe(callback) {
-        var index = this.subscriptions.indexOf(callback);
+        const index = this.subscriptions.indexOf(callback);
         if (index !== -1) {
             this.subscriptions.splice(index, 1);
         }

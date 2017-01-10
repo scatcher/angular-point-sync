@@ -1,7 +1,7 @@
 import {Model} from 'angular-point';
 import {ISyncServiceInitializationParams, ISyncPoint, SyncPoint} from './sync-point.factory';
 import {ILockReference, Lock} from './lock.factory';
-export var $q,
+export let $q,
     $firebaseArray,
     $rootScope,
     apListItemFactory,

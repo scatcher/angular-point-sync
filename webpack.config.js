@@ -37,7 +37,7 @@ module.exports = {
             exclude: [root('node_modules')]
         }, {
             test: /\.ts$/,
-            loader: 'awesome-typescript-loader?declaration=false',
+            loader: 'awesome-typescript-loader',
             exclude: [/\.e2e\.ts$/]
         },
         {
