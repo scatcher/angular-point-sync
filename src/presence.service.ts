@@ -1,8 +1,10 @@
 import * as toastr from 'toastr';
 import * as _ from 'lodash';
-import {SyncService, serviceIsInitialized} from './sync.service';
-import {ISyncServiceInitializationParams} from './sync-point.factory';
-var service: PresenceService;
+
+import { SyncService, serviceIsInitialized } from './sync.service';
+import { ISyncServiceInitializationParams } from './sync-point.factory';
+
+let service: PresenceService;
 
 export interface IFirebaseSessionObject extends AngularFireObject {
     browser: string;
@@ -10,7 +12,7 @@ export interface IFirebaseSessionObject extends AngularFireObject {
     lastActive: number;
     notifications?: IUserNotification[];
     path: string;
-    reload: boolean; //Hard refresh browser
+    reload: boolean; // Hard refresh browser
 }
 
 export interface IUserNotification {
@@ -23,10 +25,10 @@ export interface IUserNotification {
 }
 
 export interface IFirebaseUsersObject {
-    [key: number]: { //User ID
-        connections: { [key: string]: IFirebaseSessionObject } //Object for each active connection
-        lastOnline: number; //Timestamp
-    }
+    [key: number]: { // User ID
+        connections: { [key: string]: IFirebaseSessionObject } // Object for each active connection
+        lastOnline: number; // Timestamp
+    };
 }
 
 export interface IFirebaseWatchEvent {
@@ -50,30 +52,27 @@ export class PresenceService {
     users: AngularFireObject;
     sessionConnection: Firebase;
 
-    constructor(private $q: ng.IQService, $rootScope: angular.IRootScopeService, private $firebaseArray: AngularFireArrayService, private $firebaseObject: AngularFireObjectService,
-                $location: angular.ILocationService, apSyncService: SyncService) {
+    constructor(private $q: ng.IQService, $rootScope: angular.IRootScopeService, private $firebaseArray: AngularFireArrayService,
+        private $firebaseObject: AngularFireObjectService, $location: angular.ILocationService, apSyncService: SyncService) {
 
         service = this;
-        var deferred = $q.defer();
+        const deferred = $q.defer();
         service.initializeSession = deferred.promise;
 
-        //Wait for SyncService to be initialized with current users userId and firebaseUrl
+        // Wait for SyncService to be initialized with current users userId and firebaseUrl
         serviceIsInitialized.then((initializationParamsObject: ISyncServiceInitializationParams) => {
-            var userId = initializationParamsObject.userId;
-            var firebaseUrl = initializationParamsObject.firebaseUrl;
-            var firebaseRoot = firebaseUrl.replace('offline/', '');
+            const userId = initializationParamsObject.userId;
+            const firebaseUrl = initializationParamsObject.firebaseUrl;
+            const firebaseRoot = firebaseUrl.replace('offline/', '');
             service.userConnectionUrl = firebaseUrl + 'users/' + userId + '/';
-
-            // var usersRef = new Firebase(firebaseUrl + 'users');
-            // service.users = $firebaseObject(usersRef).$loaded;
 
             // since I can connect from multiple devices or browser tabs, we store each connection instance separately
             // any time that connectionsRef's value is null (i.e. has no children) I am offline
-            var thisConnectionRef = new Firebase(service.userConnectionUrl + 'connections');
+            const thisConnectionRef = new Firebase(service.userConnectionUrl + 'connections');
 
             // stores the timestamp of my last disconnect (the last time I was seen online)
-            var lastOnlineRef = new Firebase(service.userConnectionUrl + 'lastOnline');
-            var connectedRef = new Firebase(firebaseRoot + '.info/connected');
+            const lastOnlineRef = new Firebase(service.userConnectionUrl + 'lastOnline');
+            const connectedRef = new Firebase(firebaseRoot + '.info/connected');
 
 
             connectedRef.on('value', function (snap) {
@@ -90,7 +89,7 @@ export class PresenceService {
                         reload: false
                     });
 
-                    //Update the current path whenever state changes
+                    // Update the current path whenever state changes
                     $rootScope.$on('$stateChangeSuccess', function (event, current, previous, rejection) {
                         service.sessionConnection.update({
                             lastActive: Firebase.ServerValue.TIMESTAMP,
@@ -104,11 +103,11 @@ export class PresenceService {
                     // when I disconnect, update the last time I was seen online
                     lastOnlineRef.onDisconnect().set(Firebase.ServerValue.TIMESTAMP);
 
-                    var activeSessionObject = service.$firebaseObject(service.sessionConnection);
+                    const activeSessionObject = service.$firebaseObject(service.sessionConnection);
                     deferred.resolve(activeSessionObject);
 
                     // watch for events
-                    service.watchForReloadEvent(<any> activeSessionObject);
+                    service.watchForReloadEvent(<any>activeSessionObject);
                     service.watchForNotifications(userId, activeSessionObject.$id);
                 }
             });
@@ -119,7 +118,7 @@ export class PresenceService {
     deleteSessionData(userId: number, sessionKey: string) {
         return service.getSessionConnectioUrl(userId, sessionKey)
             .then(sessionConnectionUrl => {
-                var sessionRef = new Firebase(sessionConnectionUrl);
+                const sessionRef = new Firebase(sessionConnectionUrl);
                 sessionRef.remove();
             });
     }
@@ -134,7 +133,7 @@ export class PresenceService {
 
     getSessionNotificationsArray(userId: number, sessionKey: string): ng.IPromise<AngularFireArray> {
         return service.getSessionConnectioUrl(userId, sessionKey).then((sessionConnectionUrl) => {
-            var notificationsRef = new Firebase(sessionConnectionUrl + '/notifications');
+            const notificationsRef = new Firebase(sessionConnectionUrl + '/notifications');
             return service.$firebaseArray(notificationsRef).$loaded();
         })
     }
@@ -154,7 +153,7 @@ export class PresenceService {
     getUsers(): ng.IPromise<IFirebaseUsersObject> {
         return serviceIsInitialized.then((initializationParamsObject: ISyncServiceInitializationParams) => {
             if (!service.users) {
-                var usersRef = new Firebase(initializationParamsObject.firebaseUrl + 'users');
+                const usersRef = new Firebase(initializationParamsObject.firebaseUrl + 'users');
                 service.users = service.$firebaseObject(usersRef);
             }
             return service.users;
@@ -163,18 +162,18 @@ export class PresenceService {
 
     reloadBrowser(userId: number, sessionKey: string): void {
         service.getSessionConnectioUrl(userId, sessionKey).then((sessionConnectionUrl) => {
-            var sessionRef = new Firebase(sessionConnectionUrl);
-            var sessionObject: any = service.$firebaseObject(sessionRef);
+            const sessionRef = new Firebase(sessionConnectionUrl);
+            const sessionObject: any = service.$firebaseObject(sessionRef);
             sessionObject.$loaded()
                 .then(() => {
                     sessionObject.reload = true;
                     sessionObject.$save();
-                })
+                });
         });
     }
 
     sendUserNotification(userId: number, sessionKey: string, notification: IUserNotification): ng.IPromise<IUserNotification> {
-        var deferred = this.$q.defer();
+        const deferred = this.$q.defer();
         this.getSessionNotificationsArray(userId, sessionKey)
             .then((sessionNotifications) => {
                 deferred.resolve(sessionNotifications.$add(notification));
@@ -186,7 +185,7 @@ export class PresenceService {
     watchForNotifications(userId: number, sessionKey: string): void {
         this.getSessionNotificationsArray(userId, sessionKey)
             .then((notificationArray: AngularFireArray) => notificationArray.$watch((eventObject: any) => {
-                //Trigger when a new notification is added to the session notifications array
+                // Trigger when a new notification is added to the session notifications array
                 if (eventObject.event === 'child_added') {
                     _.each(notificationArray, (notification: IUserNotification, index) => {
                         service.displayUserNotification(notification);
@@ -208,8 +207,8 @@ export class PresenceService {
     }
 }
 
-function identifyBrowser(): string {
-    var ua = navigator.userAgent, tem,
+export function identifyBrowser(): string {
+    let ua = navigator.userAgent, tem,
         M = ua.match(/(opera|chrome|safari|firefox|msie|trident(?=\/))\/?\s*(\d+)/i) || [];
     if (/trident/i.test(M[1])) {
         tem = /\brv[ :]+(\d+)/g.exec(ua) || [];

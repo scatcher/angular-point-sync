@@ -1,5 +1,6 @@
 import * as _ from 'lodash';
-import {Model} from 'angular-point';
+import { Model } from 'angular-point';
+
 import {serviceIsInitialized, $firebaseArray, $rootScope} from './sync.service';
 
 export interface ISyncServiceChangeEvent {
@@ -56,9 +57,7 @@ export class SyncPoint implements ISyncPoint {
                         });
                     });
 
-
             });
-
 
     }
 
@@ -114,7 +113,7 @@ export class SyncPoint implements ISyncPoint {
      * @param {boolean} [unsubscribeOnStateChange = true]
      * @returns {function} Function used to unsubscribe.
      */
-    subscribeToChanges(callback: Function, unsubscribeOnStateChange: boolean = true): Function {
+    subscribeToChanges(callback: Function, unsubscribeOnStateChange = true): Function {
         const syncPoint = this;
         if (syncPoint.subscriptions.indexOf(callback) === -1) {
             /** Only register new subscriptions, ignore if subscription already exists */
@@ -124,8 +123,6 @@ export class SyncPoint implements ISyncPoint {
         const unsubscribe = () => this.unsubscribe(callback);
 
         if (unsubscribeOnStateChange) {
-            //var $rootScope = $injector.get('$rootScope');
-
             /** Unsubscribe from notifications when we leave this state */
             $rootScope.$on('$stateChangeStart', () => {
                 unsubscribe();

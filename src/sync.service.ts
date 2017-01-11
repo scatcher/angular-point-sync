@@ -1,6 +1,8 @@
-import {Model} from 'angular-point';
+import { Model } from 'angular-point';
+
 import {ISyncServiceInitializationParams, ISyncPoint, SyncPoint} from './sync-point.factory';
-import {ILockReference, Lock} from './lock.factory';
+import { ILockReference, Lock } from './lock.factory';
+
 export let $q,
     $firebaseArray,
     $rootScope,
@@ -8,16 +10,16 @@ export let $q,
     deferred: ng.IDeferred<ISyncServiceInitializationParams>,
     serviceIsInitialized: ng.IPromise<ISyncServiceInitializationParams>;
 
-export interface ISyncService {
+export interface SyncService {
+    Lock: () => ng.IPromise<ILockReference>;
     createSyncPoint(model: Model): ISyncPoint;
     initialize(userId: number, firebaseUrl: string): void;
-    Lock: () => ng.IPromise<ILockReference>;
 }
 
-export class SyncService implements ISyncService {
+export class SyncService implements SyncService {
     /** Minification safe - we're using leading and trailing underscores but gulp plugin doesn't treat them correctly */
     static $inject = ['$firebaseArray', '$q', 'apListItemFactory', '$rootScope'];
-
+    Lock = Lock;
     constructor(_$firebaseArray_, _$q_, _apListItemFactory_, _$rootScope_) {
         /** Expose to service scope */
         $q = _$q_;
@@ -48,5 +50,4 @@ export class SyncService implements ISyncService {
         apListItemFactory.ListItem.prototype.lock = Lock;
     }
 
-    Lock = Lock;
 }

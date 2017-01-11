@@ -1,7 +1,7 @@
 import * as moment from 'moment';
 import * as _ from 'lodash';
-import {serviceIsInitialized, $firebaseArray, $q} from './sync.service';
 
+import {serviceIsInitialized, $firebaseArray, $q} from './sync.service';
 
 export interface ILockReference {
     lockQueue: AngularFireArray;
