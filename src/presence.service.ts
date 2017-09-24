@@ -117,7 +117,7 @@ export class PresenceService {
                     deferred.resolve(activeSessionObject);
 
                     // watch for events
-                    service.watchForReloadEvent(<any>activeSessionObject);
+                    service.watchForReloadEvent(activeSessionObject);
                     service.watchForNotifications(this.currentUserId, activeSessionObject.$id);
                 }
             });
@@ -126,7 +126,7 @@ export class PresenceService {
 
     deleteSessionData(userId: number, sessionKey: string) {
         return service.getSessionConnectioUrl(userId, sessionKey).then(sessionConnectionUrl => {
-            const sessionRef = this.sessionConnection.child(sessionConnectionUrl);
+            const sessionRef = this.sessionConnection.root.child(sessionConnectionUrl);
             sessionRef.remove();
         });
     }
@@ -141,21 +141,14 @@ export class PresenceService {
 
     getSessionNotificationsArray(userId: number, sessionKey: string): ng.IPromise<AngularFireArray> {
         return service.getSessionConnectioUrl(userId, sessionKey).then(sessionConnectionUrl => {
-            const notificationsRef = this.sessionConnection.child(sessionConnectionUrl + '/notifications');
+            const notificationsRef = this.sessionConnection.root.child(sessionConnectionUrl + '/notifications');
             return service.$firebaseArray(notificationsRef).$loaded();
         });
     }
 
     getSessionConnectioUrl(userId: number, sessionKey: string): ng.IPromise<string> {
         return serviceIsInitialized.then((initializationParamsObject: ISyncServiceInitializationParams) => {
-            return initializationParamsObject.firebaseRef.path + 'users/' + userId + '/connections/' + sessionKey;
-        });
-    }
-
-    getUserConnectionUrl(userId: number): ng.IPromise<string> {
-        return serviceIsInitialized.then((initializationParamsObject: ISyncServiceInitializationParams) => {
-            console.log(initializationParamsObject.firebaseRef.path + '/users/' + userId);
-            return initializationParamsObject.firebaseRef.path + '/users/' + userId;
+            return initializationParamsObject.firebaseRef.path + '/users/' + userId + '/connections/' + sessionKey;
         });
     }
 
@@ -171,7 +164,7 @@ export class PresenceService {
 
     reloadBrowser(userId: number, sessionKey: string): void {
         service.getSessionConnectioUrl(userId, sessionKey).then((sessionConnectionUrl: string) => {
-            const sessionRef = service.sessionConnection.child(sessionConnectionUrl);
+            const sessionRef = service.sessionConnection.root.child(sessionConnectionUrl);
             const sessionObject = service.$firebaseObject(sessionRef);
             sessionObject.$loaded().then(() => {
                 sessionObject.reload = true;
@@ -194,7 +187,7 @@ export class PresenceService {
     }
 
     watchForNotifications(userId: number, sessionKey: string): void {
-        this.getSessionNotificationsArray(userId, sessionKey).then((notificationArray: AngularFireArray) =>
+        this.getSessionNotificationsArray(userId, sessionKey).then(notificationArray =>
             notificationArray.$watch((eventObject: any) => {
                 // Trigger when a new notification is added to the session notifications array
                 if (eventObject.event === 'child_added') {
