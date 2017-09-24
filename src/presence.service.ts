@@ -1,8 +1,10 @@
-import * as toastr from 'toastr';
+import * as browser from 'detect-browser';
+import * as firebase from 'firebase';
 import * as _ from 'lodash';
+import * as toastr from 'toastr';
 
-import { SyncService, serviceIsInitialized } from './sync.service';
 import { ISyncServiceInitializationParams } from './sync-point.factory';
+import { serviceIsInitialized, SyncService } from './sync.service';
 
 let service: PresenceService;
 
@@ -25,8 +27,9 @@ export interface IUserNotification {
 }
 
 export interface IFirebaseUsersObject {
-    [key: number]: { // User ID
-        connections: { [key: string]: IFirebaseSessionObject } // Object for each active connection
+    [key: number]: {
+        // User ID
+        connections: { [key: string]: IFirebaseSessionObject }; // Object for each active connection
         lastOnline: number; // Timestamp
     };
 }
@@ -46,54 +49,61 @@ export interface IFirebaseWatchEvent {
  */
 export class PresenceService {
     static $inject = ['$q', '$rootScope', '$firebaseArray', '$firebaseObject', '$location', 'apSyncService'];
-    identifyBrowser = identifyBrowser;
-    initializeSession: ng.IPromise<IFirebaseSessionObject>;
+    currentUserId: number;
+    initializeSession: ng.IPromise<any>;
     userConnectionUrl: string;
     users: AngularFireObject;
-    sessionConnection: Firebase;
+    sessionConnection: firebase.database.Reference;
 
-    constructor(private $q: ng.IQService, $rootScope: angular.IRootScopeService, private $firebaseArray: AngularFireArrayService,
-        private $firebaseObject: AngularFireObjectService, $location: angular.ILocationService, apSyncService: SyncService) {
-
+    constructor(
+        private $q: ng.IQService,
+        $rootScope: angular.IRootScopeService,
+        private $firebaseArray: AngularFireArrayService,
+        private $firebaseObject: AngularFireObjectService,
+        $location: angular.ILocationService,
+        apSyncService: SyncService,
+    ) {
         service = this;
         const deferred = $q.defer();
         service.initializeSession = deferred.promise;
 
         // Wait for SyncService to be initialized with current users userId and firebaseUrl
         serviceIsInitialized.then((initializationParamsObject: ISyncServiceInitializationParams) => {
-            const userId = initializationParamsObject.userId;
-            const firebaseUrl = initializationParamsObject.firebaseUrl;
-            const firebaseRoot = firebaseUrl.replace('offline/', '');
-            service.userConnectionUrl = firebaseUrl + 'users/' + userId + '/';
+            this.currentUserId = initializationParamsObject.userId;
 
             // since I can connect from multiple devices or browser tabs, we store each connection instance separately
             // any time that connectionsRef's value is null (i.e. has no children) I am offline
-            const thisConnectionRef = new Firebase(service.userConnectionUrl + 'connections');
+            const thisConnectionRef = initializationParamsObject.firebaseRef.child(
+                'users/' + this.currentUserId + '/connections',
+            );
 
             // stores the timestamp of my last disconnect (the last time I was seen online)
-            const lastOnlineRef = new Firebase(service.userConnectionUrl + 'lastOnline');
-            const connectedRef = new Firebase(firebaseRoot + '.info/connected');
+            const lastOnlineRef = initializationParamsObject.firebaseRef.child(
+                'users/' + String(this.currentUserId) + '/lastOnline',
+            );
 
+            const connectedRef = initializationParamsObject.firebaseRef.root.child('.info/connected');
 
-            connectedRef.on('value', function (snap) {
+            connectedRef.on('value', snap => {
                 if (snap.val() === true) {
                     // We're connected (or reconnected)! Do anything here that should happen only if online (or on reconnect)
 
                     // add this device to my connections list
                     // this value contains info about the device and connection start timestamp
                     service.sessionConnection = thisConnectionRef.push({
-                        browser: identifyBrowser(),
-                        connected: Firebase.ServerValue.TIMESTAMP,
-                        lastActive: Firebase.ServerValue.TIMESTAMP,
+                        browserName: browser.name,
+                        browserVersion: browser.version,
+                        connected: firebase.database.ServerValue.TIMESTAMP,
+                        lastActive: firebase.database.ServerValue.TIMESTAMP,
                         path: $location.url(),
-                        reload: false
+                        reload: false,
                     });
 
                     // Update the current path whenever state changes
-                    $rootScope.$on('$stateChangeSuccess', function (event, current, previous, rejection) {
+                    $rootScope.$on('$stateChangeSuccess', (event, current, previous, rejection) => {
                         service.sessionConnection.update({
-                            lastActive: Firebase.ServerValue.TIMESTAMP,
-                            path: $location.url()
+                            lastActive: firebase.database.ServerValue.TIMESTAMP,
+                            path: $location.url(),
                         });
                     });
 
@@ -101,26 +111,24 @@ export class PresenceService {
                     service.sessionConnection.onDisconnect().remove();
 
                     // when I disconnect, update the last time I was seen online
-                    lastOnlineRef.onDisconnect().set(Firebase.ServerValue.TIMESTAMP);
+                    lastOnlineRef.onDisconnect().set(firebase.database.ServerValue.TIMESTAMP);
 
                     const activeSessionObject = service.$firebaseObject(service.sessionConnection);
                     deferred.resolve(activeSessionObject);
 
                     // watch for events
                     service.watchForReloadEvent(<any>activeSessionObject);
-                    service.watchForNotifications(userId, activeSessionObject.$id);
+                    service.watchForNotifications(this.currentUserId, activeSessionObject.$id);
                 }
             });
-        })
-
+        });
     }
 
     deleteSessionData(userId: number, sessionKey: string) {
-        return service.getSessionConnectioUrl(userId, sessionKey)
-            .then(sessionConnectionUrl => {
-                const sessionRef = new Firebase(sessionConnectionUrl);
-                sessionRef.remove();
-            });
+        return service.getSessionConnectioUrl(userId, sessionKey).then(sessionConnectionUrl => {
+            const sessionRef = this.sessionConnection.child(sessionConnectionUrl);
+            sessionRef.remove();
+        });
     }
 
     displayUserNotification(notification: IUserNotification): void {
@@ -132,28 +140,29 @@ export class PresenceService {
     }
 
     getSessionNotificationsArray(userId: number, sessionKey: string): ng.IPromise<AngularFireArray> {
-        return service.getSessionConnectioUrl(userId, sessionKey).then((sessionConnectionUrl) => {
-            const notificationsRef = new Firebase(sessionConnectionUrl + '/notifications');
+        return service.getSessionConnectioUrl(userId, sessionKey).then(sessionConnectionUrl => {
+            const notificationsRef = this.sessionConnection.child(sessionConnectionUrl + '/notifications');
             return service.$firebaseArray(notificationsRef).$loaded();
-        })
+        });
     }
 
-    getSessionConnectioUrl(userId: number, sessionKey: string) {
+    getSessionConnectioUrl(userId: number, sessionKey: string): ng.IPromise<string> {
         return serviceIsInitialized.then((initializationParamsObject: ISyncServiceInitializationParams) => {
-            return initializationParamsObject.firebaseUrl + 'users/' + userId + '/connections/' + sessionKey;
+            return initializationParamsObject.firebaseRef.path + 'users/' + userId + '/connections/' + sessionKey;
         });
     }
 
     getUserConnectionUrl(userId: number): ng.IPromise<string> {
         return serviceIsInitialized.then((initializationParamsObject: ISyncServiceInitializationParams) => {
-            return initializationParamsObject.firebaseUrl + 'users/' + userId;
+            console.log(initializationParamsObject.firebaseRef.path + '/users/' + userId);
+            return initializationParamsObject.firebaseRef.path + '/users/' + userId;
         });
     }
 
     getUsers(): ng.IPromise<IFirebaseUsersObject> {
         return serviceIsInitialized.then((initializationParamsObject: ISyncServiceInitializationParams) => {
             if (!service.users) {
-                const usersRef = new Firebase(initializationParamsObject.firebaseUrl + 'users');
+                const usersRef = initializationParamsObject.firebaseRef.child('users');
                 service.users = service.$firebaseObject(usersRef);
             }
             return service.users;
@@ -161,39 +170,41 @@ export class PresenceService {
     }
 
     reloadBrowser(userId: number, sessionKey: string): void {
-        service.getSessionConnectioUrl(userId, sessionKey).then((sessionConnectionUrl) => {
-            const sessionRef = new Firebase(sessionConnectionUrl);
-            const sessionObject: any = service.$firebaseObject(sessionRef);
-            sessionObject.$loaded()
-                .then(() => {
-                    sessionObject.reload = true;
-                    sessionObject.$save();
-                });
+        service.getSessionConnectioUrl(userId, sessionKey).then((sessionConnectionUrl: string) => {
+            const sessionRef = service.sessionConnection.child(sessionConnectionUrl);
+            const sessionObject = service.$firebaseObject(sessionRef);
+            sessionObject.$loaded().then(() => {
+                sessionObject.reload = true;
+                sessionObject.$save();
+            });
         });
     }
 
-    sendUserNotification(userId: number, sessionKey: string, notification: IUserNotification): ng.IPromise<IUserNotification> {
+    sendUserNotification(
+        userId: number,
+        sessionKey: string,
+        notification: IUserNotification,
+    ): ng.IPromise<IUserNotification> {
         const deferred = this.$q.defer();
-        this.getSessionNotificationsArray(userId, sessionKey)
-            .then((sessionNotifications) => {
-                deferred.resolve(sessionNotifications.$add(notification));
-            });
+        this.getSessionNotificationsArray(userId, sessionKey).then(sessionNotifications => {
+            deferred.resolve(sessionNotifications.$add(notification));
+        });
 
-        return deferred.promise;
+        return deferred.promise as ng.IPromise<IUserNotification>;
     }
 
     watchForNotifications(userId: number, sessionKey: string): void {
-        this.getSessionNotificationsArray(userId, sessionKey)
-            .then((notificationArray: AngularFireArray) => notificationArray.$watch((eventObject: any) => {
+        this.getSessionNotificationsArray(userId, sessionKey).then((notificationArray: AngularFireArray) =>
+            notificationArray.$watch((eventObject: any) => {
                 // Trigger when a new notification is added to the session notifications array
                 if (eventObject.event === 'child_added') {
-                    _.each(notificationArray, (notification: IUserNotification, index) => {
+                    _.each(notificationArray, (notification: IUserNotification, index: any) => {
                         service.displayUserNotification(notification);
                         notificationArray.$remove(notification);
                     });
                 }
-            }));
-
+            }),
+        );
     }
 
     watchForReloadEvent(activeSessionObject: IFirebaseSessionObject): void {
@@ -206,20 +217,3 @@ export class PresenceService {
         });
     }
 }
-
-export function identifyBrowser(): string {
-    let ua = navigator.userAgent, tem,
-        M = ua.match(/(opera|chrome|safari|firefox|msie|trident(?=\/))\/?\s*(\d+)/i) || [];
-    if (/trident/i.test(M[1])) {
-        tem = /\brv[ :]+(\d+)/g.exec(ua) || [];
-        return 'IE ' + (tem[1] || '');
-    }
-    if (M[1] === 'Chrome') {
-        tem = ua.match(/\b(OPR|Edge)\/(\d+)/);
-        if (tem != null) return tem.slice(1).join(' ').replace('OPR', 'Opera');
-    }
-    M = M[2] ? [M[1], M[2]] : [navigator.appName, navigator.appVersion, '-?'];
-    if ((tem = ua.match(/version\/(\d+)/i)) != null) M.splice(1, 1, tem[1]);
-    return M.join(' ');
-}
-

@@ -1,11 +1,12 @@
-import * as moment from 'moment';
+import * as firebase from 'firebase';
 import * as _ from 'lodash';
+import * as moment from 'moment';
 
-import {serviceIsInitialized, $firebaseArray, $q} from './sync.service';
+import { $firebaseArray, $q, serviceIsInitialized } from './sync.service';
 
 export interface ILockReference {
     lockQueue: AngularFireArray;
-    myLockRef: ng.IPromise<Firebase>;
+    myLockRef: ng.IPromise<firebase.database.Reference>;
     unlock(): void;
 }
 
@@ -25,48 +26,42 @@ export function Lock(): ng.IPromise<ILockReference> {
         /** Make sure user has rights to edit */
         const userPermMask = listItem.resolvePermissions();
         if (userPermMask.EditListItems) {
+            serviceIsInitialized.then(initializationParams => {
+                /** Reference to the firebase lock queue for this record*/
+                const listItemLockRef = initializationParams.firebaseRef.child(
+                    'locks/' + model.list.title + '/' + listItem.id,
+                );
+                const lockQueue = $firebaseArray(listItemLockRef);
 
-            serviceIsInitialized
-                .then((initializationParams) => {
+                /** Reference to the lock record I created */
+                const myLockRef = lockQueue.$add({
+                    userId: initializationParams.userId,
+                    time: firebase.database.ServerValue.TIMESTAMP,
+                });
 
-                    /** Reference to the firebase lock queue for this record*/
-                    const listItemLockRef = new Firebase(initializationParams.firebaseUrl + 'locks/' + model.list.title + '/' + listItem.id);
-                    const lockQueue = $firebaseArray(listItemLockRef);
+                /** Passed as a reference so we can remove the lock when the modal form is closed*/
+                const unlock = () => myLockRef.then(myLock => myLock.remove());
 
-                    /** Reference to the lock record I created */
-                    const myLockRef = lockQueue.$add({
-                        userId: initializationParams.userId,
-                        time: Firebase.ServerValue.TIMESTAMP
-                    });
-
-                    /** Passed as a reference so we can remove the lock when the modal form is closed*/
-                    const unlock = () => myLockRef.then((myLock) => myLock.remove());
-
-                    //Automatically remove any list item locks older than 4 hours
-                    lockQueue.$loaded(() => _.each(lockQueue, (listItemLock: IListItemLock) => {
+                // Automatically remove any list item locks older than 4 hours
+                lockQueue.$loaded(() =>
+                    _.each(lockQueue, (listItemLock: IListItemLock) => {
                         if (moment().diff(lockQueue, 'hours') > 4) {
                             console.log('Purging expired list item lock.', listItemLock);
                             lockQueue.$remove(listItemLock);
                         }
-                    }));
+                    }),
+                );
 
-                    const lockReference = {lockQueue, myLockRef, unlock};
+                const lockReference = { lockQueue, myLockRef, unlock };
 
-                    myLockRef.then((lockRef) => {
-                        /** Remove the lock in the event the user looses connection, changes page, or closes browser*/
-                        lockRef.onDisconnect().remove();
-                        // var key = lockRef.key();
-                        // var index = lockQueue.$indexFor(key); // returns location in the array
-                        // deferredLock.resolve(lockQueue[index]);
-
-                    });
-
-                    // Include a referece to the lock in the queue
-
-                    deferred.resolve(lockReference);
-
+                myLockRef.then(lockRef => {
+                    /** Remove the lock in the event the user looses connection, changes page, or closes browser*/
+                    lockRef.onDisconnect().remove();
                 });
 
+                // Include a referece to the lock in the queue
+                deferred.resolve(lockReference);
+            });
         } else {
             /** User doesn't have edit rights */
             deferred.resolve({});
@@ -76,5 +71,4 @@ export function Lock(): ng.IPromise<ILockReference> {
         deferred.resolve({});
     }
     return deferred.promise;
-
 }

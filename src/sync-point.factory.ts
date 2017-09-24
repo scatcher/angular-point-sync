@@ -1,10 +1,11 @@
-import * as _ from 'lodash';
 import { Model } from 'angular-point';
+import * as firebase from 'firebase';
+import * as _ from 'lodash';
 
-import {serviceIsInitialized, $firebaseArray, $rootScope} from './sync.service';
+import { $firebaseArray, $rootScope, serviceIsInitialized } from './sync.service';
 
 export interface ISyncServiceChangeEvent {
-    changeType:  'add'|'update'|'delete';
+    changeType: 'add' | 'update' | 'delete';
     listItemId: number;
     userId: number;
     time: number;
@@ -12,7 +13,7 @@ export interface ISyncServiceChangeEvent {
 
 export interface ISyncServiceInitializationParams {
     userId: number;
-    firebaseUrl: string;
+    firebaseRef: firebase.database.Reference;
 }
 
 export interface ISyncPoint {
@@ -23,10 +24,9 @@ export interface ISyncPoint {
     unsubscribe(callback);
 }
 
-
 export class SyncPoint implements ISyncPoint {
     eventLogLength = 10;
-    changeNotifier;
+    changeNotifier: firebase.database.Reference;
     recentEvents;
     /** Container to hold all current subscriptions for the model */
     subscriptions = [];
@@ -34,31 +34,25 @@ export class SyncPoint implements ISyncPoint {
     constructor(private model: Model) {
         const syncPoint = this;
 
-        serviceIsInitialized
-            .then((initializationParams: ISyncServiceInitializationParams) => {
+        serviceIsInitialized.then((initializationParams: ISyncServiceInitializationParams) => {
+            syncPoint.changeNotifier = initializationParams.firebaseRef.child('changes/' + model.list.title);
 
-                syncPoint.changeNotifier = new Firebase(initializationParams.firebaseUrl + '/changes/' + model.list.title);
+            const query = syncPoint.changeNotifier.limitToLast(syncPoint.eventLogLength);
 
-                const query = syncPoint.changeNotifier.limitToLast(syncPoint.eventLogLength);
+            syncPoint.recentEvents = $firebaseArray(query);
 
-                syncPoint.recentEvents = $firebaseArray(query);
-
-                syncPoint.recentEvents.$loaded()
-                    .then((eventArray) => {
-
-                        /** Fired when anyone updates a list item */
-                        syncPoint.recentEvents.$watch((log) => {
-                            if (log.event === 'child_added') {
-                                const newEvent: ISyncServiceChangeEvent = syncPoint.recentEvents.$getRecord(log.key);
-                                /** Capture if event was caused by current user */
-                                const externalTrigger = newEvent.userId !== initializationParams.userId;
-                                syncPoint.processChanges(newEvent, externalTrigger);
-                            }
-                        });
-                    });
-
+            syncPoint.recentEvents.$loaded().then(eventArray => {
+                /** Fired when anyone updates a list item */
+                syncPoint.recentEvents.$watch(log => {
+                    if (log.event === 'child_added') {
+                        const newEvent: ISyncServiceChangeEvent = syncPoint.recentEvents.$getRecord(log.key);
+                        /** Capture if event was caused by current user */
+                        const externalTrigger = newEvent.userId !== initializationParams.userId;
+                        syncPoint.processChanges(newEvent, externalTrigger);
+                    }
+                });
             });
-
+        });
     }
 
     /**
@@ -69,7 +63,7 @@ export class SyncPoint implements ISyncPoint {
     private processChanges(newEvent: ISyncServiceChangeEvent, externalTrigger: boolean): void {
         const syncPoint = this;
         /** Notify subscribers */
-        _.each(syncPoint.subscriptions, (callback) => {
+        _.each(syncPoint.subscriptions, callback => {
             if (_.isFunction(callback)) {
                 callback(newEvent, externalTrigger);
             }
@@ -85,21 +79,19 @@ export class SyncPoint implements ISyncPoint {
      */
     registerChange(changeType: string, listItemId: number) {
         const syncPoint = this;
-        serviceIsInitialized
-            .then((initializationParams) => {
-                if (syncPoint.recentEvents.length >= syncPoint.eventLogLength) {
-                    /** Trim the log to prevent unnecessary size */
-                    syncPoint.recentEvents.$remove(0);
-                }
+        serviceIsInitialized.then(initializationParams => {
+            if (syncPoint.recentEvents.length >= syncPoint.eventLogLength) {
+                /** Trim the log to prevent unnecessary size */
+                syncPoint.recentEvents.$remove(0);
+            }
 
-                syncPoint.recentEvents.$add({
-                    changeType: changeType,
-                    listItemId: listItemId,
-                    userId: initializationParams.userId,
-                    time: Firebase.ServerValue.TIMESTAMP
-                });
+            syncPoint.recentEvents.$add({
+                changeType: changeType,
+                listItemId: listItemId,
+                userId: initializationParams.userId,
+                time: firebase.database.ServerValue.TIMESTAMP,
             });
-
+        });
     }
 
     /**
@@ -127,11 +119,9 @@ export class SyncPoint implements ISyncPoint {
             $rootScope.$on('$stateChangeStart', () => {
                 unsubscribe();
             });
-
         }
 
         return unsubscribe;
-
     }
 
     unsubscribe(callback) {

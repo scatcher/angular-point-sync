@@ -1,7 +1,7 @@
 import { Model } from 'angular-point';
 
-import {ISyncServiceInitializationParams, ISyncPoint, SyncPoint} from './sync-point.factory';
-import { ILockReference, Lock } from './lock.factory';
+import { Lock } from './lock.factory';
+import { ISyncPoint, ISyncServiceInitializationParams, SyncPoint } from './sync-point.factory';
 
 export let $q,
     $firebaseArray,
@@ -10,13 +10,7 @@ export let $q,
     deferred: ng.IDeferred<ISyncServiceInitializationParams>,
     serviceIsInitialized: ng.IPromise<ISyncServiceInitializationParams>;
 
-export interface SyncService {
-    Lock: () => ng.IPromise<ILockReference>;
-    createSyncPoint(model: Model): ISyncPoint;
-    initialize(userId: number, firebaseUrl: string): void;
-}
-
-export class SyncService implements SyncService {
+export class SyncService {
     /** Minification safe - we're using leading and trailing underscores but gulp plugin doesn't treat them correctly */
     static $inject = ['$firebaseArray', '$q', 'apListItemFactory', '$rootScope'];
     Lock = Lock;
@@ -37,17 +31,12 @@ export class SyncService implements SyncService {
     }
 
     /**
-     * @description Service waits for userId to be provided before adding the watch to event array.
-     * @param {{userId: userId, firebaseUrl: firebaseUrl}} userId
-     */
-    /**
-     * @description Service waits for userId to be provided before adding the watch to event array.
+     * @description Service waits for userId to be provided along with reference to the databse before adding the watch to event array.
      * @param {number} userId
-     * @param {string} firebaseUrl
+     * @param {firebase.database.Reference} firebaseRef
      */
-    initialize(userId: number, firebaseUrl: string): void {
-        deferred.resolve({userId: userId, firebaseUrl: firebaseUrl});
+    initialize(userId: number, firebaseRef: firebase.database.Reference) {
+        deferred.resolve({ userId, firebaseRef });
         apListItemFactory.ListItem.prototype.lock = Lock;
     }
-
 }
