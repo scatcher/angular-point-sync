@@ -74,12 +74,17 @@ export class PresenceService {
             // since I can connect from multiple devices or browser tabs, we store each connection instance separately
             // any time that connectionsRef's value is null (i.e. has no children) I am offline
             const thisConnectionRef = initializationParamsObject.firebaseRef.child(
-                'users/' + this.currentUserId + '/connections',
+                'users/' + this.currentUserId + '/connections'
             );
 
             // stores the timestamp of my last disconnect (the last time I was seen online)
             const lastOnlineRef = initializationParamsObject.firebaseRef.child(
-                'users/' + String(this.currentUserId) + '/lastOnline',
+                'users/' + String(this.currentUserId) + '/lastOnline'
+            );
+
+            // stores the timestamp of my last disconnect (the last time I was seen online)
+            const logsRef = initializationParamsObject.firebaseRef.child(
+                'users/' + String(this.currentUserId) + '/logs'
             );
 
             const connectedRef = initializationParamsObject.firebaseRef.root.child('.info/connected');
@@ -88,8 +93,7 @@ export class PresenceService {
                 if (snap.val() === true) {
                     // We're connected (or reconnected)! Do anything here that should happen only if online (or on reconnect)
 
-                    // add this device to my connections list
-                    // this value contains info about the device and connection start timestamp
+                    // add this device to my active connections list
                     service.sessionConnection = thisConnectionRef.push({
                         browserName: browser.name,
                         browserVersion: browser.version,
@@ -99,24 +103,48 @@ export class PresenceService {
                         reload: false,
                     });
 
+                    // Create a new log entry
+                    const sessionLog = logsRef.push({
+                        browserName: browser.name,
+                        browserVersion: browser.version,
+                        connected: firebase.database.ServerValue.TIMESTAMP,
+                        disconnected: null,
+                        history: [],
+                    });
+
+                    const sessionHistory = sessionLog.child('history');
+
+                    // Update the disconnect time on the log so we can see how long the session was
+                    sessionLog
+                        .child('disconnected')
+                        .onDisconnect()
+                        .set(firebase.database.ServerValue.TIMESTAMP);
+
                     // Update the current path whenever state changes
                     $rootScope.$on('$stateChangeSuccess', (event, current, previous, rejection) => {
+                        // Update indicator showing where user currently is within app
                         service.sessionConnection.update({
                             lastActive: firebase.database.ServerValue.TIMESTAMP,
                             path: $location.url(),
                         });
+
+                        // Log to history for current user
+                        sessionHistory.push({
+                            time: firebase.database.ServerValue.TIMESTAMP,
+                            path: $location.url(),
+                        });
                     });
 
-                    // when I disconnect, remove this device
+                    // When I disconnect, remove this device
                     service.sessionConnection.onDisconnect().remove();
 
-                    // when I disconnect, update the last time I was seen online
+                    // When I disconnect, update the last time I was seen online
                     lastOnlineRef.onDisconnect().set(firebase.database.ServerValue.TIMESTAMP);
 
                     const activeSessionObject = service.$firebaseObject(service.sessionConnection);
                     deferred.resolve(activeSessionObject);
 
-                    // watch for events
+                    // Watch for events
                     service.watchForReloadEvent(activeSessionObject);
                     service.watchForNotifications(this.currentUserId, activeSessionObject.$id);
                 }
@@ -176,7 +204,7 @@ export class PresenceService {
     sendUserNotification(
         userId: number,
         sessionKey: string,
-        notification: IUserNotification,
+        notification: IUserNotification
     ): ng.IPromise<IUserNotification> {
         const deferred = this.$q.defer();
         this.getSessionNotificationsArray(userId, sessionKey).then(sessionNotifications => {
@@ -196,7 +224,7 @@ export class PresenceService {
                         notificationArray.$remove(notification);
                     });
                 }
-            }),
+            })
         );
     }
 
