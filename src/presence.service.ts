@@ -40,6 +40,19 @@ export interface IFirebaseWatchEvent {
     prevId?: string;
 }
 
+export interface SyncRouteChangeEvent {
+    time: number;
+    path: string;
+}
+
+export interface SyncUserSessionLog {
+    browserName: string;
+    browserVersion: string;
+    connected: number;
+    disconnected: number;
+    history: SyncRouteChangeEvent[];
+}
+
 /**
  * @ngdoc Object
  * @name PresenceService
@@ -61,7 +74,7 @@ export class PresenceService {
         private $firebaseArray: AngularFireArrayService,
         private $firebaseObject: AngularFireObjectService,
         $location: angular.ILocationService,
-        apSyncService: SyncService,
+        apSyncService: SyncService
     ) {
         service = this;
         const deferred = $q.defer();
@@ -74,18 +87,16 @@ export class PresenceService {
             // since I can connect from multiple devices or browser tabs, we store each connection instance separately
             // any time that connectionsRef's value is null (i.e. has no children) I am offline
             const thisConnectionRef = initializationParamsObject.firebaseRef.child(
-                'users/' + this.currentUserId + '/connections'
+                'monitoring/users/' + this.currentUserId + '/connections'
             );
 
             // stores the timestamp of my last disconnect (the last time I was seen online)
             const lastOnlineRef = initializationParamsObject.firebaseRef.child(
-                'users/' + String(this.currentUserId) + '/lastOnline'
+                'monitoring/users/' + String(this.currentUserId) + '/lastOnline'
             );
 
             // stores the timestamp of my last disconnect (the last time I was seen online)
-            const logsRef = initializationParamsObject.firebaseRef.child(
-                'users/' + String(this.currentUserId) + '/logs'
-            );
+            const logsRef = initializationParamsObject.firebaseRef.child('logs/users/' + String(this.currentUserId));
 
             const connectedRef = initializationParamsObject.firebaseRef.root.child('.info/connected');
 
@@ -144,7 +155,7 @@ export class PresenceService {
                     const activeSessionObject = service.$firebaseObject(service.sessionConnection);
                     deferred.resolve(activeSessionObject);
 
-                    // Watch for events
+                    // watch for events
                     service.watchForReloadEvent(activeSessionObject);
                     service.watchForNotifications(this.currentUserId, activeSessionObject.$id);
                 }
@@ -165,6 +176,15 @@ export class PresenceService {
         } else {
             console[notification.toastType](notification.title, notification.message);
         }
+    }
+
+    getLogsForUser(userId: number, quantity = 100) {
+        return serviceIsInitialized.then((initializationParamsObject: ISyncServiceInitializationParams) => {
+            const userLogsRef = initializationParamsObject.firebaseRef
+                .child('logs/users/' + userId)
+                .limitToLast(quantity);
+            return service.$firebaseArray(userLogsRef) as SyncUserSessionLog[];
+        });
     }
 
     getSessionNotificationsArray(userId: number, sessionKey: string): ng.IPromise<AngularFireArray> {
