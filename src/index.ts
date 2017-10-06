@@ -1,9 +1,9 @@
 import { AngularPointModule } from 'angular-point';
 
-import {SyncService} from './sync.service';
-import {PresenceService, IFirebaseUsersObject, IUserNotification} from './presence.service';
-import {ISyncServiceChangeEvent, ISyncPoint} from './sync-point.factory';
-import {ILockReference} from './lock.factory';
+import { SyncService } from './sync.service';
+import { PresenceService, IFirebaseUsersObject, IUserNotification, SyncUserSessionLog } from './presence.service';
+import { ISyncServiceChangeEvent, ISyncPoint } from './sync-point.factory';
+import { ILockReference } from './lock.factory';
 /**
  * @ngdoc service
  * @name sync
@@ -41,11 +41,18 @@ import {ILockReference} from './lock.factory';
  *
  */
 
-
-AngularPointModule
-    .service('apSyncService', SyncService)
+AngularPointModule.service('apSyncService', SyncService)
     .service('apPresenceService', PresenceService)
     // Instantiate immediately
-    .run(['apPresenceService', (apPresenceService) => { }]);
+    .run(['apPresenceService', apPresenceService => {}]);
 
-export { ISyncServiceChangeEvent, SyncService, ILockReference, ISyncPoint, PresenceService, IFirebaseUsersObject, IUserNotification }
+export {
+    ISyncServiceChangeEvent,
+    SyncService,
+    ILockReference,
+    ISyncPoint,
+    PresenceService,
+    IFirebaseUsersObject,
+    IUserNotification,
+    SyncUserSessionLog,
+};
