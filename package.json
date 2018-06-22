@@ -1,44 +1,46 @@
 {
-    "name": "angular-point-sync",
-    "version": "6.0.4",
-    "description":
-        "Supports 3-way data binding if you decide to incorporate firebase (any change by any user to a list item is mirrored across users). The data isn't saved to firebase but the change event is so all subscribers are notified to request an update from SharePoint.",
-    "scripts": {
-        "build": "webpack"
-    },
-    "dependencies": {
-        "angular": "~1.6.1",
-        "angular-point": "^5.0.0",
-        "angularfire": "^2.3.0",
-        "detect-browser": "~1.12.0",
-        "firebase": "~4.4.0",
-        "lodash": "^4.17.4",
-        "moment": "^2.18.1",
-        "toastr": "^2.1.2"
-    },
-    "devDependencies": {
-        "@types/angular": "~1.6.32",
-        "@types/jasmine": "~2.6.0",
-        "@types/lodash": "~4.14.45",
-        "@types/node": "^8.0.30",
-        "@types/source-map": "~0.5.0",
-        "@types/toastr": "^2.1.32",
-        "awesome-typescript-loader": "^3.0.0-beta.17",
-        "tslint": "^4.3.1",
-        "tslint-loader": "^3.3.0",
-        "typescript": "~2.5.2",
-        "webpack": "2.1.0-beta.27",
-        "webpack-node-externals": "^1.5.4"
-    },
-    "keywords": ["AngularJS", "AngularPoint"],
-    "repository": {
-        "type": "git",
-        "url": "https://github.com/scatcher/angular-point-sync.git"
-    },
-    "author": "Scott Hatcher",
-    "license": "MIT",
-    "bugs": {
-        "url": "https://github.com/scatcher/angular-point-sync/issues"
-    },
-    "homepage": "https://github.com/scatcher/angular-point-sync"
+  "name": "angular-point-sync",
+  "version": "6.0.5",
+  "description": "Supports 3-way data binding if you decide to incorporate firebase (any change by any user to a list item is mirrored across users). The data isn't saved to firebase but the change event is so all subscribers are notified to request an update from SharePoint.",
+  "scripts": {
+    "build": "webpack"
+  },
+  "peerDependencies": {
+    "angular": "~1.6.1",
+    "angular-point": "^5.0.0",
+    "angularfire": "^2.3.0",
+    "detect-browser": "~1.12.0",
+    "firebase": "~4.4.0",
+    "lodash": "^4.17.4",
+    "moment": "^2.18.1",
+    "toastr": "^2.1.2"
+  },
+  "devDependencies": {
+    "@types/angular": "~1.6.32",
+    "@types/jasmine": "~2.6.0",
+    "@types/lodash": "~4.14.45",
+    "@types/node": "^8.0.30",
+    "@types/source-map": "~0.5.0",
+    "@types/toastr": "^2.1.32",
+    "awesome-typescript-loader": "^3.0.0-beta.17",
+    "tslint": "^4.3.1",
+    "tslint-loader": "^3.3.0",
+    "typescript": "~2.5.2",
+    "webpack": "2.1.0-beta.27",
+    "webpack-node-externals": "^1.5.4"
+  },
+  "keywords": [
+    "AngularJS",
+    "AngularPoint"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/scatcher/angular-point-sync.git"
+  },
+  "author": "Scott Hatcher",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/scatcher/angular-point-sync/issues"
+  },
+  "homepage": "https://github.com/scatcher/angular-point-sync"
 }
