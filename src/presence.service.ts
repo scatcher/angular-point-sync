@@ -1,5 +1,5 @@
 import * as browser from "detect-browser";
-import * as firebase from "firebase";
+import * as firebase from "firebase/app";
 import * as _ from "lodash";
 import * as toastr from "toastr";
 
@@ -108,9 +108,8 @@ export class PresenceService {
           "logs/users/" + String(this.currentUserId)
         );
 
-        const connectedRef = initializationParamsObject.firebaseRef.root.child(
-          ".info/connected"
-        );
+        const connectedRef =
+          initializationParamsObject.firebaseRef.root.child(".info/connected");
 
         connectedRef.on("value", (snap) => {
           if (snap.val() === true) {
@@ -190,9 +189,8 @@ export class PresenceService {
     return service
       .getSessionConnectioUrl(userId, sessionKey)
       .then((sessionConnectionUrl) => {
-        const sessionRef = this.sessionConnection.root.child(
-          sessionConnectionUrl
-        );
+        const sessionRef =
+          this.sessionConnection.root.child(sessionConnectionUrl);
         sessionRef.remove();
       });
   }
@@ -257,9 +255,8 @@ export class PresenceService {
     return serviceIsInitialized.then(
       (initializationParamsObject: ISyncServiceInitializationParams) => {
         if (!service.users) {
-          const usersRef = initializationParamsObject.firebaseRef.child(
-            "monitoring/users"
-          );
+          const usersRef =
+            initializationParamsObject.firebaseRef.child("monitoring/users");
           service.users = service.$firebaseObject(usersRef).$loaded();
         }
         return service.users;
@@ -271,9 +268,8 @@ export class PresenceService {
     service
       .getSessionConnectioUrl(userId, sessionKey)
       .then((sessionConnectionUrl: string) => {
-        const sessionRef = service.sessionConnection.root.child(
-          sessionConnectionUrl
-        );
+        const sessionRef =
+          service.sessionConnection.root.child(sessionConnectionUrl);
         const sessionObject = service.$firebaseObject(sessionRef);
         sessionObject.$loaded().then(() => {
           sessionObject.reload = true;
